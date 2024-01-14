@@ -1,0 +1,527 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sql>
+    <query id = "INSERT_HOTEL">
+        INSERT
+            INTO
+            BOO_TRAVEL.HOTELS
+                (ID,
+                HOTEL_NAME,
+                HOTEL_STAR,
+                LATTITUDE,
+                LONGTITUDE,
+                DESCRIPTION,
+                NOTE,
+                STATUS,
+                ADDRESS_ID,
+                TAX_CODE,
+                HOTEL_PHONE_NUMBER)
+            VALUES(?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                TRUE,
+                ?,
+                ?,
+                ?);
+
+    </query>
+
+    <query id = "UPDATE_EMPLOYEE_OF_HOTEL">
+        UPDATE
+            BOO_TRAVEL.EMPLOYEE_OF
+        SET
+            HOTEL_ID = ?
+        WHERE
+            USER_ID = ?
+
+    </query>
+
+    <query id = "INSERT_HOTEL_SERVICE">
+        INSERT
+            INTO
+            BOO_TRAVEL.HOTEL_SERVICE_DETAIL
+                (HOTEL_ID,
+                HOTEL_SERVICE_ID)
+            VALUES(
+                ?,
+                ?);
+
+    </query>
+
+    <query id = "CHECK_TAX_CODE">
+        SELECT
+            ID
+        FROM
+            BOO_TRAVEL.HOTELS
+        WHERE
+            TAX_CODE = ?
+    </query>
+
+    <query id = "CHECK_PHONE_NUMBER">
+        SELECT
+        ID
+        FROM
+        BOO_TRAVEL.HOTELS
+        WHERE
+        HOTEL_PHONE_NUMBER = ?
+    </query>
+
+    <query id="COUNT_HOTELS_OUTPUT">
+        SELECT
+            COUNT(*)
+        FROM
+            BOO_TRAVEL.HOTELS H
+        INNER JOIN BOO_TRAVEL.EMPLOYEE_OF E ON
+            H.ID = E.HOTEL_ID
+        INNER JOIN BOO_TRAVEL.USERS U ON
+            E.MANAGER_ID = U.ID
+            AND E.MANAGER_ID = ?
+            AND E.STATUS = TRUE
+            AND U.ROLE_ID = 3
+        WHERE
+            1 = 1
+            #EXTENDS_CONDITION#
+    </query>
+
+
+    <query id = "SEARCH_HOTEL_FOR_MANAGER">
+        SELECT
+            H.ID,
+            H.HOTEL_NAME,
+            H.HOTEL_STAR,
+            H.STATUS,
+            H.TAX_CODE,
+            TRIM(CONCAT(A.ADDRESS1 , ' ', A.ADDRESS2, ', ', W.WARD_NAME, ', ', D.DISTRICT_NAME, ', ', P.PROVINCE_NAME)) AS ADDRESS,
+            TRIM(CONCAT(U.FIRST_NAME, ' ', U.LAST_NAME)) AS BUSINESS_OWNER_NAME
+        FROM
+            BOO_TRAVEL.HOTELS H
+        INNER JOIN BOO_TRAVEL.EMPLOYEE_OF E ON
+            H.ID = E.HOTEL_ID
+            AND E.MANAGER_ID = ?
+        INNER JOIN BOO_TRAVEL.USERS U ON
+            E.USER_ID = U.ID
+        INNER JOIN BOO_TRAVEL.ADDRESSES A ON
+            H.ADDRESS_ID = A.ID
+        INNER JOIN BOO_TRAVEL.WARDS W ON
+            A.WARD_ID = W.ID
+        INNER JOIN BOO_TRAVEL.DISTRICTS D ON
+            W.DISTRICT_ID = D.ID
+        INNER JOIN BOO_TRAVEL.PROVINCES P ON
+            D.PROVINCE_ID = P.ID
+        INNER JOIN BOO_TRAVEL.USERS US ON
+            E.MANAGER_ID = US.ID
+            AND US.ROLE_ID = 3
+        WHERE
+            1 = 1
+            #EXTENDS_CONDITION#
+            #EXTENDS_PAGING#
+    </query>
+
+    <query id="UPDATE_STATUS_HOTEL">
+        UPDATE BOO_TRAVEL.HOTELS
+        SET STATUS = ?
+        WHERE
+        ID = ?
+    </query>
+
+    <query id = "GET_HOTEL_BY_ID">
+        SELECT
+            H.ID,
+            H.HOTEL_NAME,
+            H.HOTEL_STAR,
+            H.LATTITUDE,
+            H.LONGTITUDE,
+            H.DESCRIPTION,
+            H.NOTE,
+            H.STATUS,
+            H.TAX_CODE,
+            A.ADDRESS1,
+            A.ADDRESS2,
+            A.WARD_ID,
+            W.DISTRICT_ID,
+            D.PROVINCE_ID,
+            E.USER_ID,
+            U.USER_NAME,
+            H.HOTEL_PHONE_NUMBER,
+            SERVICE.LIST_SERVICE
+        FROM
+            BOO_TRAVEL.HOTELS H
+        INNER JOIN BOO_TRAVEL.EMPLOYEE_OF E ON
+            H.ID = E.HOTEL_ID
+            AND E.STATUS = TRUE
+        INNER JOIN BOO_TRAVEL.USERS U ON
+            E.USER_ID = U.ID
+            AND U.ROLE_ID = 4
+        INNER JOIN BOO_TRAVEL.ADDRESSES A ON
+            H.ADDRESS_ID = A.ID
+        INNER JOIN BOO_TRAVEL.WARDS W ON
+            A.WARD_ID = W.ID
+        INNER JOIN BOO_TRAVEL.DISTRICTS D ON
+            W.DISTRICT_ID = D.ID
+        INNER JOIN BOO_TRAVEL.PROVINCES P ON
+            D.PROVINCE_ID = P.ID
+        LEFT JOIN (SELECT SD.HOTEL_ID,
+                    STRING_AGG(S.HOTEL_SERVICE_NAME,',') AS LIST_SERVICE
+                    FROM
+                        BOO_TRAVEL.HOTEL_SERVICE_DETAIL SD
+                    JOIN BOO_TRAVEL.HOTEL_SERVICE S ON
+                        SD.HOTEL_SERVICE_ID = S.ID
+                    GROUP BY SD.HOTEL_ID ) AS SERVICE
+            ON H.ID = SERVICE.HOTEL_ID
+        WHERE
+            H.ID = ?
+    </query>
+
+    <query id="SEARCH_HOTEL">
+        <![CDATA[
+        WITH VALIDROOMS AS (
+            SELECT
+            	DISTINCT R.ID AS ROOM_ID,
+            	R.HOTEL_ID,
+            	RPBD.PRICE,
+            	ROW_NUMBER() OVER(PARTITION BY R.HOTEL_ID ORDER BY COALESCE(RPBD.PRICE,R.DEFAULT_PRICE)) AS ROW_NUM
+            FROM BOO_TRAVEL.ROOMS R INNER JOIN
+               ( SELECT
+					COUNT(RABD.ROOM_ID) AS COUNT_ROOM,
+					ROOM_ID
+				FROM
+					BOO_TRAVEL.ROOM_AVAILABLE_BY_DATE RABD
+				WHERE
+					DATE_APPLY >= ?::DATE
+					AND DATE_APPLY < ?::DATE
+					AND COALESCE (NUMBER_ROOM_AVAILABLE,0) >= ?
+				GROUP BY
+					RABD.ROOM_ID) AS CHECK_ROOM_AVAILABLE ON
+                    CHECK_ROOM_AVAILABLE.ROOM_ID = R.ID
+                    AND CHECK_ROOM_AVAILABLE.COUNT_ROOM =  (CAST(? AS DATE) - CAST(? AS DATE))
+            LEFT JOIN BOO_TRAVEL.ROOM_PRICE_BY_DATE RPBD ON
+        		R.ID = RPBD.ROOM_ID
+        		AND RPBD.DATE_APPLY = ?::DATE
+        	WHERE R.MAX_PEOPLE_STAY > ?
+        )
+        SELECT
+            H.id AS hotel_id,
+            H.hotel_name,
+            H.hotel_star,
+            H.longtitude,
+            H.lattitude,
+            P.province_name,
+            R.default_price,
+            H.description,
+            H.note,
+            H.tax_code,
+            H.status,
+            A.address1,
+            A.address2,
+            W.ward_name,
+            D.district_name,
+            H.includes_breakfast,
+            H.confrim_now,
+            H.booked_ago,
+             (
+                SELECT STRING_AGG(I.image_url, ', ')
+                FROM BOO_TRAVEL.hotel_image I
+                WHERE I.hotel_id = H.id
+            ) AS all_image_urls,
+            (
+                SELECT STRING_AGG(S.hotel_service_name, ', ')
+                FROM BOO_TRAVEL.hotel_service_detail SD
+                JOIN BOO_TRAVEL.hotel_service S ON SD.hotel_service_id = S.id
+                WHERE SD.hotel_id = H.id
+            ) AS list_service,
+            COALESCE(VR.PRICE, R.DEFAULT_PRICE) AS FINAL_PRICE
+        FROM boo_travel.rooms R
+        JOIN boo_travel.hotels H ON R.hotel_id = H.id
+        JOIN boo_travel.addresses A ON H.address_id = A.id
+        JOIN boo_travel.wards W ON A.ward_id = W.id
+        JOIN boo_travel.districts D ON W.district_id = D.id
+        JOIN boo_travel.provinces P ON D.province_id = P.id
+        INNER JOIN ValidRooms VR ON R.id = VR.room_id AND VR.ROW_NUM = 1
+        WHERE
+            #CONDITION
+            #ORDER#
+        LIMIT COALESCE(?, 10)
+        OFFSET COALESCE(?, 0);
+    ]]>
+    </query>
+
+
+    <query id="GET_SERVICE_HOTEL">
+        SELECT
+            DISTINCT ON (HOTEL_SERVICE.HOTEL_SERVICE_NAME ) HOTEL_SERVICE.HOTEL_SERVICE_NAME
+        FROM
+            BOO_TRAVEL.HOTEL_SERVICE_DETAIL
+        JOIN
+            BOO_TRAVEL.HOTEL_SERVICE
+        ON
+            HOTEL_SERVICE_DETAIL.HOTEL_SERVICE_ID = HOTEL_SERVICE.ID
+        WHERE
+            HOTEL_SERVICE_DETAIL.HOTEL_ID = ?
+    </query>
+
+    <query id ="GET_HOTEL_IMAGE">
+        SELECT ri.image_url
+        FROM BOO_TRAVEL.HOTEL_IMAGE ri
+        WHERE ri.hotel_id = ?
+    </query>
+
+    <query id ="GET_HOTEL_BY_ROOM_ID">
+        SELECT
+            H.*
+        FROM
+            BOO_TRAVEL.HOTELS H
+        JOIN
+            BOO_TRAVEL.ROOMS R ON H.ID = R.HOTEL_ID
+        WHERE
+            R.ID = ?;
+    </query>
+
+    <query id ="INSERT_HOTEL_IMAGE">
+        INSERT INTO BOO_TRAVEL.hotel_image
+        (image_url, hotel_id)
+        VALUES(?,?);
+    </query>
+
+    <query id ="GET_HOTEL_ID_BY_BO_ID">
+        SELECT
+            HOTEL_ID
+        FROM BOO_TRAVEL.EMPLOYEE_OF
+        WHERE USER_ID = ?
+    </query>
+
+    <query id="SEARCH_SUGGEST_HOTEL">
+        <![CDATA[
+        SELECT
+            H.ID ,
+            H.HOTEL_NAME ,
+            SUM(BRD.NUMBER_ROOM_BOOKING) AS ROOM_COUNT,
+            P.PROVINCE_NAME,
+            B.IMAGE_URL
+        FROM
+            BOO_TRAVEL.HOTELS H
+        LEFT JOIN (
+            SELECT
+                HI.ID,
+                HI.IMAGE_URL,
+                HI.HOTEL_ID,
+                ROW_NUMBER() OVER(PARTITION BY HI.HOTEL_ID ORDER BY IMAGE_URL ASC) ROW
+            FROM
+                BOO_TRAVEL.HOTEL_IMAGE HI
+            ORDER BY
+                HI.ID
+                ) B ON
+            H.ID = B.HOTEL_ID
+            AND B.ROW = 1
+        INNER JOIN BOO_TRAVEL.ROOMS R ON
+            H.ID = R.HOTEL_ID
+        INNER JOIN BOO_TRAVEL.BOOKING_ROOM_DETAIL BRD ON
+            R.ID = BRD.ROOM_ID
+        INNER JOIN BOO_TRAVEL.ADDRESSES A ON
+            H.ADDRESS_ID = A.ID
+        INNER JOIN BOO_TRAVEL.WARDS W ON
+            A.WARD_ID = W.ID
+        INNER JOIN BOO_TRAVEL.DISTRICTS D ON
+            W.DISTRICT_ID = D.ID
+        INNER JOIN BOO_TRAVEL.PROVINCES P ON
+            D.PROVINCE_ID = P.ID
+        GROUP BY
+            H.ID,
+            H.HOTEL_NAME,
+            P.PROVINCE_NAME,
+            B.IMAGE_URL
+        ORDER BY
+            ROOM_COUNT DESC
+        LIMIT 5
+        ]]>
+    </query>
+
+    <query id="CONDITION_PROVINCE">
+        AND P.PROVINCE_NAME = ?
+    </query>
+
+    <query id="SEARCH_SUGGEST_LOCATION">
+        SELECT
+            SUM(BRD.NUMBER_ROOM_BOOKING) AS ROOM_COUNT,
+            P.ID,
+            P.PROVINCE_NAME,
+            P.IMAGE
+        FROM
+            BOO_TRAVEL.HOTELS H
+        INNER JOIN BOO_TRAVEL.ROOMS R ON
+            H.ID = R.HOTEL_ID
+        INNER JOIN BOO_TRAVEL.BOOKING_ROOM_DETAIL BRD ON
+            R.ID = BRD.ROOM_ID
+        INNER JOIN BOO_TRAVEL.ADDRESSES A ON
+            H.ADDRESS_ID = A.ID
+        INNER JOIN BOO_TRAVEL.WARDS W ON
+            A.WARD_ID = W.ID
+        INNER JOIN BOO_TRAVEL.DISTRICTS D ON
+            W.DISTRICT_ID = D.ID
+        INNER JOIN BOO_TRAVEL.PROVINCES P ON
+            D.PROVINCE_ID = P.ID
+        GROUP BY
+            P.ID,
+            P.PROVINCE_NAME
+        ORDER BY
+            ROOM_COUNT DESC
+        LIMIT 5
+    </query>
+
+    <query id="GET_PROVINCE_NAME_SUGGEST">
+        SELECT
+            P.ID,
+            P.PROVINCE_NAME ,
+            COUNT(H.ID) COUNT_HOTEL
+        FROM
+            BOO_TRAVEL.PROVINCES P
+        INNER JOIN BOO_TRAVEL.DISTRICTS D ON
+            D.PROVINCE_ID = P.ID
+            AND BOO_TRAVEL.UNACCENT(PROVINCE_NAME) ILIKE BOO_TRAVEL.UNACCENT(?)
+        INNER JOIN BOO_TRAVEL.WARDS W ON
+            W.DISTRICT_ID = D.ID
+        INNER JOIN BOO_TRAVEL.ADDRESSES A ON
+            A.WARD_ID = W.ID
+        INNER JOIN BOO_TRAVEL.HOTELS H ON
+            A.ID = H.ADDRESS_ID
+        GROUP BY
+            P.ID,
+            P.PROVINCE_NAME
+        ORDER BY
+            BOO_TRAVEL.SIMILARITY(BOO_TRAVEL.UNACCENT(PROVINCE_NAME),BOO_TRAVEL.UNACCENT(?)) DESC,
+            COUNT_HOTEL DESC
+        LIMIT 1
+    </query>
+
+    <query id="GET_DISTRICTS_NAME_SUGGEST">
+        SELECT
+            D.ID,
+            D.DISTRICT_NAME,
+            COUNT(H.ID) COUNT_HOTEL
+        FROM
+            BOO_TRAVEL.DISTRICTS D
+        INNER JOIN BOO_TRAVEL.WARDS W ON
+            W.DISTRICT_ID = D.ID
+        INNER JOIN BOO_TRAVEL.ADDRESSES A ON
+            A.WARD_ID = W.ID
+        INNER JOIN BOO_TRAVEL.HOTELS H ON
+            A.ID = H.ADDRESS_ID
+        WHERE
+            BOO_TRAVEL.UNACCENT(DISTRICT_NAME) ILIKE BOO_TRAVEL.UNACCENT(?)
+        GROUP BY
+            D.ID,
+            D.DISTRICT_NAME
+        ORDER BY
+            BOO_TRAVEL.SIMILARITY(BOO_TRAVEL.UNACCENT(DISTRICT_NAME),BOO_TRAVEL.UNACCENT(?)) DESC,
+            COUNT_HOTEL DESC
+        LIMIT 1
+    </query>
+
+    <query id="GET_SERVICE_HOTEL_BY_ID">
+        SELECT
+            HOTEL_SERVICE_DETAIL.HOTEL_SERVICE_ID
+        FROM
+            BOO_TRAVEL.HOTEL_SERVICE_DETAIL
+        WHERE
+            HOTEL_SERVICE_DETAIL.HOTEL_ID = ?
+
+    </query>
+
+
+    <query id="UPDATE_HOTEL">
+        UPDATE
+            BOO_TRAVEL.HOTELS
+        SET
+            HOTEL_NAME = ?,
+            HOTEL_STAR = ?,
+            DESCRIPTION = ?,
+            NOTE = ?,
+            TAX_CODE = ?,
+            INCLUDES_BREAKFAST = ?,
+            CONFRIM_NOW = ?,
+            HOTEL_PHONE_NUMBER = ?
+        WHERE
+            ID = ?
+    </query>
+
+    <query id="DELETE_HOTEL_SERVICE">
+        DELETE
+            FROM
+                BOO_TRAVEL.HOTEL_SERVICE_DETAIL
+            WHERE
+                HOTEL_ID = ?
+    </query>
+
+
+    <query id ="UPDATE_LAST_TIME_BOOKING">
+        <![CDATA[
+        UPDATE
+            BOO_TRAVEL.HOTELS
+        SET
+            BOOKED_AGO = CURRENT_TIMESTAMP AT TIME ZONE 'ASIA/HO_CHI_MINH'
+        WHERE
+            ID = ?
+        ]]>
+    </query>
+
+    <query id="COUNT_TOTAL_HOTEL_SYSTEM">
+        SELECT COUNT(*) FROM BOO_TRAVEL.HOTELS where status = true
+    </query>
+
+    <query id="COUNT_TOTAL_HOTEL_BUSINESS_ADMIN">
+        select count(*) from
+        boo_travel.hotels h
+        join boo_travel.employee_of eo
+        on h.id = eo.hotel_id
+        where eo.manager_id = ?
+        and h.status = true
+    </query>
+
+    <query id="DELETE_HOTEL_IMAGE">
+        DELETE
+            FROM
+                BOO_TRAVEL.HOTEL_IMAGE
+            WHERE
+                HOTEL_ID = ?
+    </query>
+
+    <query id="DELETE_IMAGE_HOTEL_UPDATE">
+        DELETE FROM BOO_TRAVEL.HOTEL_IMAGE WHERE HOTEL_ID = ?
+        #EXTEND_CONDITION#
+    </query>
+
+    <query id="GET_LIST_IMAGE_HOTEL_DELETE">
+        SELECT IMAGE_URL FROM BOO_TRAVEL.HOTEL_IMAGE WHERE HOTEL_ID = ?
+        #EXTEND_CONDITION#
+    </query>
+
+    <query id = "CHECK_TAX_CODE_UPDATE">
+        SELECT
+        ID
+        FROM
+        BOO_TRAVEL.HOTELS
+        WHERE
+        TAX_CODE = ? AND ID != ?
+    </query>
+
+    <query id = "CHECK_PHONE_NUMBER_UPDATE">
+        SELECT
+        ID
+        FROM
+        BOO_TRAVEL.HOTELS
+        WHERE
+        HOTEL_PHONE_NUMBER = ? AND ID != ?
+    </query>
+
+    <query id="GET_HOTEL_PHONE">
+        SELECT
+            hotel_phone_number
+        FROM
+            BOO_TRAVEL.hotels
+        WHERE
+            ID = ?
+    </query>
+
+</sql>

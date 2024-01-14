@@ -1,0 +1,365 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sql>
+    <query id="SEQ_ADDRESS">
+        SELECT NEXTVAL('BOO_TRAVEL.ADDRESSES_ID_SEQ') AS ADDRESS_ID
+    </query>
+
+    <query id="SEQ_USER_ID">
+        SELECT NEXTVAL('BOO_TRAVEL.USERS_ID_SEQ') AS USER_ID
+    </query>
+
+    <query id="SEQ_HOTEL_ID">
+        SELECT NEXTVAL('BOO_TRAVEL.HOTELS_ID_SEQ') AS HOTEL_ID
+    </query>
+
+    <query id="SEQ_HOTEL_IMAGE">
+        SELECT NEXTVAL('BOO_TRAVEL.HOTEL_IMAGE_ID_SEQ') AS HOTEL_IMAGE_ID
+    </query>
+
+    <query id="SEQ_BOOKING_ROOM_ID">
+        SELECT NEXTVAL('BOO_TRAVEL.BOOKING_ROOM_ID_SEQ') AS BOOKING_ROOM_ID
+    </query>
+
+    <query id="SEQ_BOOKING_ROOM_ID">
+        SELECT NEXTVAL('BOO_TRAVEL.BOOKING_ROOM_ID_SEQ') AS BOOKING_ROOM_ID
+    </query>
+
+    <query id="SEQ_BOOKING_ROOM_DETAIL_ID">
+        SELECT NEXTVAL('BOO_TRAVEL.BOOKING_ROOM_DETAIL_ID_SEQ') AS BOOKING_ROOM_DETAIL_ID
+    </query>
+
+    <query id="SEQ_TRANSACTIONS_ID">
+        SELECT NEXTVAL('BOO_TRAVEL.TRANSACTIONS_ID_SEQ') AS TRANSACTIONS_ID
+    </query>
+
+    <query id="SEQ_PROMOTION_REDEMPTION_ID">
+        SELECT NEXTVAL('BOO_TRAVEL.PROMOTION_REDEMPTION_ID_SEQ') AS PROMOTION_REDEMPTION_ID
+    </query>
+
+    <query id="INSERT_ADDRESS">
+        INSERT INTO BOO_TRAVEL.ADDRESSES
+            (ID,
+            ADDRESS1,
+            ADDRESS2,
+            WARD_ID)
+        VALUES(
+            ?,
+            ?,
+            ?,
+            ?);
+    </query>
+
+    <query id="SELECT_ROLE_BY_ID">
+        SELECT * BOO_TRAVEL.ADDRESSES
+        WHERE
+        ID = ?
+    </query>
+
+    <query id="INS_USER">
+        INSERT INTO BOO_TRAVEL.USERS
+            (ID,
+            USER_NAME,
+            EMAIL,
+            USER_PASSWORD,
+            FIRST_NAME,
+            LAST_NAME,
+            PHONE_NUMBER,
+            BIRTH_DATE,
+            GENDER,
+            ADDRESS_ID,
+            AVATAR,
+            STATUS,
+            ROLE_ID,
+            IDENTIFICATION)
+        VALUES(
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            TRUE,
+            ?,
+            ?);
+    </query>
+
+    <query id="COUNT_USER_OUTPUT">
+        SELECT
+            COUNT(*)
+        FROM
+            BOO_TRAVEL.USERS U
+        WHERE
+            1 = 1
+            #EXTENDS_CONDITION#
+            #EXTENDS_ROLD#
+    </query>
+
+    <query id="SEARCH_USER">
+        SELECT
+            ID,
+            USER_NAME,
+            EMAIL,
+            USER_PASSWORD,
+            FIRST_NAME,
+            LAST_NAME,
+            PHONE_NUMBER,
+            BIRTH_DATE,
+            GENDER,
+            ADDRESS_ID,
+            AVATAR,
+            STATUS,
+            ROLE_ID,
+            TRIM(CONCAT(FIRST_NAME, ' ', LAST_NAME)) AS FULL_NAME
+        FROM
+            BOO_TRAVEL.USERS
+        WHERE
+            ROLE_ID = ?
+            #EXTENDS_CONDITION#
+            #EXTENDS_PAGING#
+    </query>
+
+    <query id="CHECK_EXIST_BY_ID">
+        SELECT ID FROM BOO_TRAVEL.USERS WHERE ID = ?
+    </query>
+
+    <query id="UPDATE_STATUS_USERS">
+        UPDATE BOO_TRAVEL.USERS
+            SET STATUS = ?
+        WHERE
+            ID = ?
+    </query>
+
+    <query id="GET_USER_BY_ID">
+        SELECT
+            U.ID,
+            U.USER_NAME,
+            U.EMAIL,
+            U.FIRST_NAME,
+            U.LAST_NAME,
+            U.PHONE_NUMBER,
+            U.BIRTH_DATE,
+            U.GENDER,
+            U.AVATAR,
+            U.STATUS,
+            U.ROLE_ID,
+            A.ADDRESS1,
+            A.ADDRESS2,
+            A.WARD_ID,
+            W.DISTRICT_ID,
+            D.PROVINCE_ID ,
+            W.WARD_NAME,
+            D.DISTRICT_NAME,
+            P.PROVINCE_NAME,
+            U.IDENTIFICATION
+        FROM
+            BOO_TRAVEL.USERS U
+        LEFT JOIN
+            BOO_TRAVEL.ADDRESSES A
+        ON
+            U.ADDRESS_ID = A.ID
+        LEFT JOIN
+            BOO_TRAVEL.WARDS W
+        ON
+            A.WARD_ID = W.ID
+        LEFT JOIN
+            BOO_TRAVEL.DISTRICTS D
+        ON
+            W.DISTRICT_ID = D.ID
+        LEFT JOIN
+            BOO_TRAVEL.PROVINCES P
+        ON
+            D.PROVINCE_ID = P.ID
+        WHERE U.ID = ?
+    </query>
+
+    <query id = "INSERT_EMPLOYEE_OF">
+        INSERT
+            INTO
+            BOO_TRAVEL.EMPLOYEE_OF
+                (USER_ID,
+                MANAGER_ID)
+            VALUES(
+                ?,
+                ? );
+
+    </query>
+
+    <query id = "SELECT_BED_TYPE">
+        SELECT
+            ID,
+            BED_TYPE_NAME
+        FROM
+            BOO_TRAVEL.BED_TYPE
+    </query>
+
+    <query id="SELECT_ROOM_TYPE">
+        SELECT
+            ID,
+            ROOM_TYPE_NAME
+        FROM
+            BOO_TRAVEL.ROOM_TYPE
+    </query>
+
+    <query id="SEARCH_EMPLOYEE">
+        SELECT
+        U.ID,
+        U.USER_NAME,
+        U.EMAIL,
+        U.USER_PASSWORD,
+        U.FIRST_NAME,
+        U.LAST_NAME,
+        U.PHONE_NUMBER,
+        U.BIRTH_DATE,
+        U.GENDER,
+        U.ADDRESS_ID,
+        U.AVATAR,
+        U.STATUS,
+        U.ROLE_ID,
+        TRIM(CONCAT(U.FIRST_NAME, ' ', U.LAST_NAME)) AS FULL_NAME
+        FROM
+        BOO_TRAVEL.USERS U
+        JOIN BOO_TRAVEL.EMPLOYEE_OF EO
+        ON U.ID = EO.USER_ID
+        WHERE
+        U.ROLE_ID = ?
+        AND
+        EO.MANAGER_ID = ?
+        #EXTENDS_CONDITION#
+        #EXTENDS_PAGING#
+    </query>
+
+    <query id="GET_EMPLOYEE_BY_ID">
+        SELECT
+        U.ID,
+        U.USER_NAME,
+        U.EMAIL,
+        U.FIRST_NAME,
+        U.LAST_NAME,
+        U.PHONE_NUMBER,
+        U.BIRTH_DATE,
+        U.GENDER,
+        U.AVATAR,
+        U.STATUS,
+        U.ROLE_ID,
+        A.ADDRESS1,
+        A.ADDRESS2,
+        A.WARD_ID,
+        W.DISTRICT_ID,
+        D.PROVINCE_ID ,
+        W.WARD_NAME,
+        D.DISTRICT_NAME,
+        P.PROVINCE_NAME,
+        U.IDENTIFICATION
+        FROM
+        BOO_TRAVEL.USERS U
+        JOIN
+        BOO_TRAVEL.ADDRESSES A
+        ON
+        U.ADDRESS_ID = A.ID
+        JOIN
+        BOO_TRAVEL.WARDS W
+        ON
+        A.WARD_ID = W.ID
+        JOIN
+        BOO_TRAVEL.DISTRICTS D
+        ON
+        W.DISTRICT_ID = D.ID
+        JOIN
+        BOO_TRAVEL.PROVINCES P
+        ON
+        D.PROVINCE_ID = P.ID
+        JOIN
+        BOO_TRAVEL.EMPLOYEE_OF EO
+        ON U.ID = EO.USER_ID
+        WHERE U.ID = ? AND EO.MANAGER_ID = ?
+    </query>
+
+    <query id="COUNT_EMPLOYEE_OUTPUT">
+        SELECT
+        COUNT(*)
+        FROM
+        BOO_TRAVEL.USERS U
+        JOIN BOO_TRAVEL.EMPLOYEE_OF EO
+        ON U.ID = EO.USER_ID
+        WHERE
+        EO.MANAGER_ID = ?
+        #EXTENDS_CONDITION#
+        #EXTENDS_ROLE#
+    </query>
+
+    <query id="SEARCH_STAFF">
+        SELECT
+        U.ID,
+        U.USER_NAME,
+        U.EMAIL,
+        U.USER_PASSWORD,
+        U.FIRST_NAME,
+        U.LAST_NAME,
+        U.PHONE_NUMBER,
+        U.BIRTH_DATE,
+        U.GENDER,
+        U.ADDRESS_ID,
+        U.AVATAR,
+        U.STATUS,
+        U.ROLE_ID,
+        TRIM(CONCAT(U.FIRST_NAME, ' ', U.LAST_NAME)) AS FULL_NAME
+        FROM
+        BOO_TRAVEL.USERS U
+        JOIN BOO_TRAVEL.EMPLOYEE_OF EO
+        ON U.ID = EO.USER_ID
+        WHERE
+        (U.ROLE_ID = 5 OR U.ROLE_ID = 6)
+        AND
+        EO.MANAGER_ID = ?
+        #EXTENDS_CONDITION#
+        #EXTENDS_PAGING#
+    </query>
+
+    <query id = "INSERT_STAFF_OF">
+        INSERT
+        INTO
+        BOO_TRAVEL.EMPLOYEE_OF
+        (USER_ID,
+        MANAGER_ID,
+        HOTEL_ID)
+        VALUES(
+        ?,
+        ?,
+        ?);
+
+    </query>
+
+    <query id="UPDATE_ADDRESS">
+        UPDATE
+            BOO_TRAVEL.ADDRESSES
+        SET
+            ADDRESS1 = ?,
+            ADDRESS2 = ?,
+            WARD_ID = ?
+        WHERE
+            ID = (SELECT ADDRESS_ID FROM BOO_TRAVEL.HOTELS WHERE ID = ?)
+    </query>
+
+    <query id="UPDATE_HOTEL_IS_NULL">
+        UPDATE
+            BOO_TRAVEL.EMPLOYEE_OF
+        SET
+            HOTEL_ID = NULL
+        WHERE
+            USER_ID = ?
+    </query>
+
+    <query id="UPDATE_MANAGER">
+        UPDATE
+            BOO_TRAVEL.EMPLOYEE_OF
+        SET
+            MANAGER_ID = ?
+        WHERE
+            MANAGER_ID = ?
+    </query>
+</sql>

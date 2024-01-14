@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sql>
+    <query id="SELECT_PROVINCE">
+        SELECT ID, PROVINCE_NAME, REGION_ID
+        FROM BOO_TRAVEL.PROVINCES;
+    </query>
+
+    <query id="SELECT_DISTRICT">
+        SELECT
+            ID,
+            DISTRICT_NAME,
+            PROVINCE_ID
+        FROM
+            BOO_TRAVEL.DISTRICTS
+        WHERE
+            PROVINCE_ID = ?;
+    </query>
+
+    <query id="SELECT_WARD">
+        SELECT
+            ID,
+            WARD_NAME,
+            DISTRICT_ID
+        FROM
+            BOO_TRAVEL.WARDS
+        WHERE
+            DISTRICT_ID = ?;
+    </query>
+
+    <query id="SELECT_PROVINCE_BY_ID">
+        SELECT
+            ID,
+            PROVINCE_NAME,
+            REGION_ID
+        FROM
+            BOO_TRAVEL.PROVINCES
+        WHERE
+            ID = ?;
+    </query>
+
+    <query id="SELECT_DISTRICT_BY_ID">
+        SELECT
+            ID,
+            DISTRICT_NAME,
+            PROVINCE_ID
+        FROM
+            BOO_TRAVEL.DISTRICTS
+        WHERE
+            ID = ?;
+    </query>
+
+    <query id="SELECT_WARD_BY_ID">
+        SELECT
+            ID,
+            WARD_NAME,
+            DISTRICT_ID
+        FROM
+            BOO_TRAVEL.WARDS
+        WHERE
+            ID = ?;
+    </query>
+</sql>

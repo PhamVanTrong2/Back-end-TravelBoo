@@ -1,0 +1,53 @@
+server:
+   port: 8080
+
+logging:
+  level:
+    com:
+      zaxxer:
+        hikari: TRACE
+spring:
+  datasource:
+    hikari:
+      auto-commit: false
+      max-lifetime: 100000
+      connection-timeout: 20000
+      minimum-idle: 1
+      idle-timeout: 20000
+      maximum-pool-size: 30
+      jdbc-url: jdbc:postgresql://bootravel.clmjkuclieop.ap-southeast-1.rds.amazonaws.com:5432/boo_travel
+      driver-class-name: org.postgresql.Driver
+      username: postgres
+      password: boo123456
+      pool-name: data_source
+  servlet:
+    multipart:
+      max-file-size: 5MB  # Set the maximum file size for individual files
+      max-request-size: 10MB  # Set the maximum request size (including all files)
+security:
+  jwt:
+    secret: bootravel
+    jwtExpirationMs: 86400000
+    jwtRefreshExpirationMs: 86400000
+  master: /register,/login,/refreshToken,/swagger-ui/**,/swagger-ui.html,/swagger-resources/**,/v2/api-docs,/webjars/**
+  domain: http://base.com,http://tool.com
+
+mail:
+  host: smtp.gmail.com
+  port: 587
+  username: travelboo80@gmail.com
+  password: fpkbwxinzztndznw
+  properties:
+    mail.smtp.auth: true
+    mail.smtp.starttls.enable: true
+    mail.mime.charset: UTF-8
+
+aws:
+  s3:
+    accessKey: AKIAV4B4BI2CHASTZR52
+    secretKey: 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
+    bucketName: bootravel
+    clientRegion: ap-southeast-1
+    domain: https://bootravel.s3.ap-southeast-1.amazonaws.com/
+
+

@@ -1,0 +1,218 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sql>
+    <query id="COUNT_PROMOTIONS_OUTPUT">
+        SELECT
+        COUNT(*)
+        FROM
+        BOO_TRAVEL.PROMOTIONS P
+        WHERE
+        1 = 1
+        #EXTENDS_CONDITION#
+    </query>
+
+    <query id="SEARCH_PROMOTION">
+        SELECT
+            ID,
+            PROMOTION_CODE,
+            PROMOTION_NAME,
+            START_DATE,
+            END_DATE,
+            STATUS,
+            image_url
+        FROM
+            BOO_TRAVEL.PROMOTIONS
+        WHERE
+            1 = 1
+            #EXTENDS_CONDITION#
+            #EXTENDS_PAGING#
+    </query>
+
+    <query id="INSERT_PROMOTION">
+        INSERT INTO BOO_TRAVEL.PROMOTIONS (
+            PROMOTION_CODE,
+            PROMOTION_NAME,
+            IMAGE_URL,
+            DESCRIPTION,
+            START_DATE,
+            END_DATE,
+            TYPE_PROMOTION,
+            DISCOUNT_PERCENT,
+            MAX_DISCOUNT,
+            FIX_MONEY_DISCOUNT,
+            TYPE_MAX_USE,
+            MAX_USE,
+            STATUS,
+            CREATED_DATE,
+            MODIFIED_DATE
+        ) VALUES (
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?
+        )
+    </query>
+
+    <query id="CHECK_EXIST_PROMOTION">
+        SELECT
+            ID
+        FROM
+            BOO_TRAVEL.PROMOTIONS
+        WHERE
+            ID = ?
+    </query>
+
+    <query id="CHECK_EXIST_CODE_PROMOTION">
+        SELECT
+            PROMOTION_CODE
+        FROM
+            BOO_TRAVEL.PROMOTIONS
+        WHERE
+            PROMOTION_CODE = ?
+    </query>
+
+    <query id="UPDATE_STATUS_PROMOTION">
+        UPDATE
+            BOO_TRAVEL.PROMOTIONS
+        SET
+            STATUS = ?,
+            MODIFIED_DATE = ?
+        WHERE
+            ID = ?
+    </query>
+
+    <query id="UPDATE_STATUS_PROMOTION_SCHEDULE">
+        UPDATE
+            BOO_TRAVEL.PROMOTIONS
+        SET
+            STATUS = ?
+        WHERE
+            END_DATE NOT BETWEEN ? AND '2099-12-31'
+    </query>
+
+    <query id="SELECT_PROMOTION_BY_ID">
+        SELECT
+            ID,
+            PROMOTION_CODE,
+            PROMOTION_NAME,
+            IMAGE_URL,
+            DESCRIPTION,
+            START_DATE,
+            END_DATE,
+            TYPE_PROMOTION,
+            DISCOUNT_PERCENT,
+            MAX_DISCOUNT,
+            FIX_MONEY_DISCOUNT,
+            TYPE_MAX_USE,
+            MAX_USE,
+            CREATED_DATE,
+            MODIFIED_DATE,
+            STATUS
+        FROM
+            BOO_TRAVEL.PROMOTIONS
+        WHERE
+            ID = ?
+    </query>
+
+    <query id="UPDATE_PROMOTION">
+        UPDATE
+        BOO_TRAVEL.PROMOTIONS
+        SET
+        PROMOTION_NAME = ?,
+        DESCRIPTION = ?,
+        START_DATE = ?,
+        END_DATE = ?,
+        TYPE_PROMOTION = ?,
+        DISCOUNT_PERCENT = ?,
+        MAX_DISCOUNT = ?,
+        FIX_MONEY_DISCOUNT = ?,
+        TYPE_MAX_USE = ?,
+        MAX_USE = ?,
+        MODIFIED_DATE = ?
+        WHERE
+        ID = ?
+    </query>
+
+    <query id ="SELECT_PROMOTION_BY_CODE">
+        SELECT
+            ID,
+            PROMOTION_CODE,
+            PROMOTION_NAME,
+            IMAGE_URL,
+            DESCRIPTION,
+            START_DATE,
+            END_DATE,
+            TYPE_PROMOTION,
+            DISCOUNT_PERCENT,
+            MAX_DISCOUNT,
+            FIX_MONEY_DISCOUNT,
+            TYPE_MAX_USE,
+            MAX_USE,
+            CREATED_DATE,
+            MODIFIED_DATE,
+            STATUS
+        FROM
+            BOO_TRAVEL.PROMOTIONS
+        WHERE
+            PROMOTION_CODE = ?
+    </query>
+
+    <query id = "UPDATE_MAX_USE_PROMOTION">
+        UPDATE
+        BOO_TRAVEL.PROMOTIONS
+        SET
+        MAX_USE = ?
+        WHERE
+        ID = ?
+    </query>
+
+
+       <!--  promotion_redemption  -->
+
+    <query id = "INSERT_PROMOTION_REDEMPTION">
+        INSERT INTO BOO_TRAVEL.PROMOTION_REDEMPTION
+            (ID,
+            USER_ID,
+            PROMOTION_ID,
+            TRANSACTION_ID,
+            REDEEMED_AMOUNT,
+            REDEMPTION_DATE)
+        VALUES
+            (?,?,?,?,?,?)
+    </query>
+
+    <query id="CHECK_USER_USED_PROMOTION">
+        SELECT * FROM BOO_TRAVEL.PROMOTION_REDEMPTION
+        WHERE
+        USER_ID = ? AND PROMOTION_ID = ?
+    </query>
+
+    <query id="COUNT_TOTAL_PROMOTION_SYSTEM">
+        SELECT COUNT(*) FROM BOO_TRAVEL.PROMOTIONS
+    </query>
+
+    <query id="SEARCH_PUBLIC_PROMOTION">
+        SELECT
+            ID,
+            PROMOTION_CODE,
+            PROMOTION_NAME,
+            START_DATE,
+            END_DATE,
+            STATUS,
+            image_url
+        FROM
+            BOO_TRAVEL.PROMOTIONS
+        WHERE
+            STATUS = ?
+    </query>
+</sql>

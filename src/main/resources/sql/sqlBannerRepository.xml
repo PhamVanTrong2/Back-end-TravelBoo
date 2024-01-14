@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sql>
+    <query id="INSERT_BANNER">
+        INSERT INTO BOO_TRAVEL.BANNER
+            (IMAGES,
+            STATUS,
+            TYPES,
+            HOTEL_ID,
+            CREATED_BY,
+            CREATED_DATE,
+            LAST_MODIFY_DATE)
+        VALUES (?, ?, ?, ?, ?, ?, ?);
+    </query>
+
+    <query id="SELECT_BANNERS">
+        SELECT * FROM BOO_TRAVEL.BANNER
+    </query>
+
+    <query id="FIND_BANNER_BY_ID">
+        SELECT * FROM BOO_TRAVEL.BANNER
+        WHERE ID = ?;
+    </query>
+
+    <query id="UPDATE_BANNER">
+        UPDATE BOO_TRAVEL.BANNER
+            SET
+            STATUS = ?,
+            LAST_MODIFY_DATE = ?
+        WHERE ID = ?;
+    </query>
+</sql>

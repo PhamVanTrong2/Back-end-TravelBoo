@@ -1,0 +1,278 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sql>
+    <query id="INSERT_TRANSACTIONS">
+        INSERT INTO BOO_TRAVEL.TRANSACTIONS
+        (ID, USER_ID, PAYMENT_METHOD_ID, AMOUNT, TRANSACTION_TIME, BOOKING_ROOM_ID, STATUS)
+        VALUES
+        (?, ?, ?, ?, CURRENT_TIMESTAMP AT TIME ZONE 'ASIA/HO_CHI_MINH', ?, ?);
+    </query>
+
+
+    <query id="UPDATE_TRANSACTION_STATUS">
+        UPDATE BOO_TRAVEL.TRANSACTIONS
+            SET STATUS = ?
+        WHERE
+            ID = ?
+    </query>
+
+    <query id="SELECT_TRANSACTION_BY_ID">
+        SELECT *
+        FROM BOO_TRAVEL.TRANSACTIONS
+        WHERE ID = ?
+    </query>
+
+    <query id="COUNT_TRANSACTION_SYSTEM_OUTPUT">
+        with booking as (
+            select room_id, brd.booking_room_id from boo_travel.booking_room br
+            join boo_travel.booking_room_detail brd on br.id = booking_room_id
+            group by brd.room_id, brd.booking_room_id
+        )
+
+        SELECT count(*) FROM
+        BOO_TRAVEL.TRANSACTIONS T
+            left join boo_travel.users u on u.id = t.user_id
+            left join boo_travel.payment_method pm on pm.id = t.payment_method_id
+            left join booking b on b.booking_room_id = t.booking_room_id
+            left join boo_travel.rooms r on r.id = b.room_id
+            left join boo_travel.hotels h on h.id = r.hotel_id
+        WHERE
+            1 = 1
+            #EXTENDS_CONDITION#
+    </query>
+
+    <query id="SELECT_TRANSACTION_SYSTEM">
+        with booking as (
+            select room_id, brd.booking_room_id from boo_travel.booking_room br
+            join boo_travel.booking_room_detail brd on br.id = booking_room_id
+            group by brd.room_id, brd.booking_room_id
+        )
+
+        select
+            t.id,
+            u.user_name,
+            h.hotel_name,
+            pm.payment_method_name,
+            t.amount,
+            t.transaction_time,
+            t.status
+        from boo_travel.transactions t
+        left join boo_travel.users u on u.id = t.user_id
+        left join boo_travel.payment_method pm on pm.id = t.payment_method_id
+        left join booking b on b.booking_room_id = t.booking_room_id
+        left join boo_travel.rooms r on r.id = b.room_id
+        left join boo_travel.hotels h on h.id = r.hotel_id
+        WHERE
+            1 = 1
+        #EXTENDS_CONDITION#
+        #EXTENDS_PAGING#
+    </query>
+
+    <query id="SELECT_TRANSACTION_SYSTEM_DETAIL_BY_ID">
+        select
+        t.id,
+        u.user_name,
+        br.email,
+        br.phone_number,
+        h.hotel_name,
+        h.tax_code,
+        concat(a.address1, ', ', a.address2, ', ', w.ward_name, ', ', d.district_name, ', ', p.province_name) as address,
+        pm.payment_method_name,
+        t.amount,
+        t.transaction_time
+        from boo_travel.transactions t
+        left join boo_travel.users u on u.id = t.user_id
+        left join boo_travel.payment_method pm on pm.id = t.payment_method_id
+        left join boo_travel.booking_room br on br.id = t.booking_room_id
+        left join boo_travel.booking_room_detail brd on brd.booking_room_id = t.booking_room_id
+        left join boo_travel.rooms r on r.id = brd.room_id
+        left join boo_travel.hotels h on h.id = r.hotel_id
+        left join boo_travel.addresses a on a.id = h.address_id
+        left join boo_travel.wards w on w.id = a.ward_id
+        left join boo_travel.districts d on d.id = w.district_id
+        left join boo_travel.provinces p on p.id = d.province_id
+        where t.id = ?
+
+    </query>
+
+    <query id="COUNT_TRANSACTION_BE_OUTPUT">
+        with booking as (
+            select room_id, brd.booking_room_id from boo_travel.booking_room br
+            join boo_travel.booking_room_detail brd on br.id = booking_room_id
+            group by brd.room_id, brd.booking_room_id
+        )
+
+        select count(*)
+            from boo_travel.transactions t
+            left join booking brd on brd.booking_room_id = t.booking_room_id
+            left join boo_travel.rooms r ON r.id = brd.room_id
+            left join boo_travel.hotels h on h.id = r.hotel_id
+            left join boo_travel.employee_of eo on eo.hotel_id = h.id
+            left join boo_travel.users u on u.id = eo.user_id
+                and u.role_id = 6
+        where
+            eo.user_id = ?
+            #EXTENDS_CONDITION#
+    </query>
+
+    <query id="SELECT_TRANSACTION_BE">
+        with booking as (
+            select room_id, brd.booking_room_id from boo_travel.booking_room br
+            join boo_travel.booking_room_detail brd on br.id = booking_room_id
+            group by brd.room_id, brd.booking_room_id
+        )
+
+        select
+            t.id,
+            u.user_name,
+            pm.payment_method_name,
+            t.amount,
+            t.transaction_time,
+            t.status
+        from boo_travel.transactions t
+            left join boo_travel.users u on u.id = t.user_id
+            left join boo_travel.payment_method pm on pm.id = t.payment_method_id
+            left join booking brd on brd.booking_room_id = t.booking_room_id
+            left join boo_travel.rooms r on r.id = brd.room_id
+            left join boo_travel.hotels h on h.id = r.hotel_id
+            left join boo_travel.employee_of eo on eo.hotel_id = h.id
+            left join boo_travel.users u2 on u2.id = eo.user_id
+                and u2.role_id = 6
+        where
+            eo.user_id = ?
+            #EXTENDS_CONDITION#
+            #EXTENDS_PAGING#
+    </query>
+
+    <query id="COUNT_TOTAL_REVENUE_SYSTEM">
+        select sum(amount) from boo_travel.transactions t
+        where status = 0
+    </query>
+
+    <query id="TOTAL_INCOME_SYSTEM">
+        SELECT
+            EXTRACT(MONTH FROM transaction_time AT TIME ZONE 'UTC-07') AS month,
+            SUM(amount) AS total_amount
+        FROM
+            boo_travel.transactions
+        WHERE
+            status = 0 and
+            transaction_time BETWEEN date_trunc('month', CURRENT_TIMESTAMP AT TIME ZONE 'UTC-07') - interval '6 months' AND CURRENT_TIMESTAMP AT TIME ZONE 'UTC-07'
+        GROUP BY
+            EXTRACT(MONTH FROM transaction_time AT TIME ZONE 'UTC-07')
+        ORDER BY
+            month;
+    </query>
+
+    <query id="COUNT_TOTAL_REVENUE_BUSINESS_ADMIN">
+        with temptable as (
+            select room_id, brd.booking_room_id from boo_travel.booking_room br
+                join boo_travel.booking_room_detail brd on br.id = booking_room_id
+            group by brd.room_id, brd.booking_room_id
+        ),
+        booking as (
+            select booking_room_id, room_id from boo_travel.booking_room_detail brd
+            where booking_room_id in (
+                select id from boo_travel.booking_room
+            )
+            group by booking_room_id, room_id
+        )
+
+        select sum(amount) from boo_travel.transactions t join booking bk
+        on t.booking_room_id = bk.booking_room_id
+        where t.status = 0 and room_id in (
+            select id from boo_travel.rooms r where r.hotel_id in (
+                select hotel_id from boo_travel.employee_of eo where manager_id = ?
+            )
+        )
+    </query>
+
+    <query id="TOTAL_INCOME_BUSINESS_ADMIN">
+        with temptable as (
+            select room_id, brd.booking_room_id from boo_travel.booking_room br
+                join boo_travel.booking_room_detail brd on br.id = booking_room_id
+                group by brd.room_id, brd.booking_room_id
+            ),
+            booking as (
+                select booking_room_id, room_id from temptable brd
+                where booking_room_id in (
+                select id from boo_travel.booking_room
+            )
+            group by booking_room_id, room_id
+        )
+
+        select
+            EXTRACT(MONTH FROM transaction_time AT TIME ZONE 'UTC-07') AS month,
+            sum(amount) AS total_amount
+        from boo_travel.transactions t join booking bk
+        on t.booking_room_id = bk.booking_room_id
+        where t.status = 0 and ( transaction_time BETWEEN date_trunc('month', CURRENT_TIMESTAMP AT TIME ZONE 'UTC-07') - interval '6 months' AND CURRENT_TIMESTAMP AT TIME ZONE 'UTC-07')
+            and room_id in (
+                select id from boo_travel.rooms r where r.hotel_id in (
+                    select hotel_id from boo_travel.employee_of eo where manager_id = ?
+            )
+        )
+        group by
+            EXTRACT(MONTH FROM transaction_time AT TIME ZONE 'UTC-07')
+        order by
+        month
+    </query>
+
+    <query id="COUNT_TOTAL_REVENUE_BUSINESS_OWNER">
+        with temptable as (
+            select room_id, brd.booking_room_id from boo_travel.booking_room br
+            join boo_travel.booking_room_detail brd on br.id = booking_room_id
+            group by brd.room_id, brd.booking_room_id
+        ),
+        booking as (
+            select booking_room_id, room_id from temptable brd
+            where booking_room_id in (
+                select id from boo_travel.booking_room
+            )
+            group by booking_room_id, room_id
+        )
+
+        select sum(amount) from boo_travel.transactions t join booking bk
+            on t.booking_room_id = bk.booking_room_id
+            where t.status = 0 and room_id in (
+                select id from boo_travel.rooms r where r.hotel_id in (
+                    select hotel_id from boo_travel.employee_of eo
+                    join boo_travel.users u on eo.user_id = u.id and u.role_id = 4
+                    where eo.user_id = ?
+            )
+        )
+    </query>
+
+    <query id="TOTAL_INCOME_BUSINESS_OWNER">
+        with temptable as (
+            select room_id, brd.booking_room_id from boo_travel.booking_room br
+            join boo_travel.booking_room_detail brd on br.id = booking_room_id
+            group by brd.room_id, brd.booking_room_id
+        ),
+        booking as (
+            select booking_room_id, room_id from temptable brd
+                where booking_room_id in (
+                select id from boo_travel.booking_room
+                )
+            group by booking_room_id, room_id
+        )
+
+        select
+            EXTRACT(MONTH FROM transaction_time AT TIME ZONE 'UTC-07') AS month,
+            sum(amount) AS total_amount
+        from boo_travel.transactions t join booking bk
+        on t.booking_room_id = bk.booking_room_id
+        where t.status = 0 and ( transaction_time BETWEEN date_trunc('month', CURRENT_TIMESTAMP AT TIME ZONE 'UTC-07') - interval '6 months' AND CURRENT_TIMESTAMP AT TIME ZONE 'UTC-07' )
+            and room_id in (
+                select id from boo_travel.rooms r where r.hotel_id in (
+                select hotel_id from boo_travel.employee_of eo
+                join boo_travel.users u on u.id = eo.user_id and u.role_id = 4
+                where eo.user_id = ?
+            )
+        )
+        group by
+            EXTRACT(MONTH FROM transaction_time AT TIME ZONE 'UTC-07')
+        order by
+            month
+    </query>
+
+</sql>

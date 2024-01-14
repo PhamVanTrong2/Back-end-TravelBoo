@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sql>
+
+    <query id="SELECT_ALL_TOKEN">
+        SELECT
+            *
+        FROM
+            BOO_TRAVEL.REFRESH_TOKEN RT;
+    </query>
+
+</sql>

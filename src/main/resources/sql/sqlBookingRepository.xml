@@ -1,0 +1,406 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sql>
+    <query id="INSERT_BOOKING_ROOM">
+        INSERT INTO BOO_TRAVEL.BOOKING_ROOM
+            (ID,
+            USER_ID,
+            EMAIL,
+            PHONE_NUMBER,
+            CHECK_IN,
+            CHECK_OUT,
+            TOTAL_PRICE,
+            NOTE,
+            STATUS,
+            TIME_BOOKING,
+            PROMOTION_ID,
+            LAST_MODIFY_BY,
+            LAST_MODIFY_DATE,
+            LAST_NAME,
+            FIRST_NAME )
+        VALUES
+            (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP AT TIME ZONE 'ASIA/HO_CHI_MINH', ?, ?, CURRENT_TIMESTAMP AT TIME ZONE 'ASIA/HO_CHI_MINH', ?, ?)
+    </query>
+
+    <query id ="GET_BOOKING_ROOM_BY_ID">
+        SELECT * FROM BOO_TRAVEL.BOOKING_ROOM
+        WHERE
+            ID = ?
+    </query>
+
+    <query id ="UPDATE_TOTAL_PRICE_BOOKING_ROOM">
+        UPDATE BOO_TRAVEL.BOOKING_ROOM
+            SET TOTAL_PRICE = ?
+        WHERE
+            ID = ?
+    </query>
+
+    <query id="CHECK_BOOKING_EXIST">
+        <![CDATA[
+          SELECT *
+          FROM BOO_TRAVEL.BOOKING_ROOM
+          WHERE CHECK_IN <= ?
+            AND CHECK_OUT >= ?
+            AND ID IN (
+                SELECT BOOKING_ROOM_ID
+                FROM BOO_TRAVEL.BOOKING_ROOM_DETAIL
+                WHERE ROOM_ID = ?
+            )
+            AND EXISTS (
+                SELECT 1
+                FROM BOO_TRAVEL.ROOM_AVAILABLE_BY_DATE rad
+                WHERE rad.room_id = ?
+                  AND rad.date_apply BETWEEN ? AND ?
+                  AND rad.number_room_available < ?
+                )
+        ]]>
+    </query>
+
+    <query id="UPDATE_STATUS_BOOKING_ROOM">
+        UPDATE BOO_TRAVEL.BOOKING_ROOM
+            SET STATUS = ?
+        WHERE
+            ID = ?
+    </query>
+
+         <!--Booking_detail-->
+
+    <query id="INSERT_BOOKING_ROOM_DETAIL">
+        <![CDATA[
+        INSERT
+            INTO
+            BOO_TRAVEL.BOOKING_ROOM_DETAIL
+                (BOOKING_ROOM_ID,
+                ROOM_ID,
+                NUMBER_ROOM_BOOKING,
+                PRICE,
+                NUMBER_GUEST,
+                FROM_DATE,
+                TO_DATE,
+                NUMBER_OF_ADULTS_ARISING,
+                NUMBER_OF_CHILD_ARISING)
+                VALUES(
+                    ?,
+                    ?,
+                    ?,
+                   	?,
+                    ?,
+                    ?::DATE,
+                    ?::DATE,
+                    ?,
+                    ?)
+        ]]>
+    </query>
+
+    <query id ="GET_BOOKING_DETAIL_BY_ID">
+        SELECT *
+            FROM  BOO_TRAVEL.BOOKING_ROOM_DETAIL
+        WHERE
+            BOOKING_ROOM_ID = ?
+    </query>
+
+    <query id="COUNT_BOOKING_OUTPUT">
+        SELECT
+            COUNT(*) AS record_count
+        FROM
+        (
+            SELECT
+                br.id
+            FROM boo_travel.booking_room br
+                JOIN boo_travel.booking_room_detail brd ON br.id = brd.booking_room_id
+                JOIN boo_travel.rooms r ON r.id = brd.room_id
+                JOIN boo_travel.employee_of eo ON eo.hotel_id = r.hotel_id
+                JOIN boo_travel.users u ON u.id = eo.user_id AND u.role_id = 5
+            WHERE
+                eo.user_id = ?
+            GROUP BY br.id
+        ) AS booking_rooms;
+    </query>
+
+    <query id="SELECT_BOOKING">
+        select
+            br.id,
+            concat(br.first_name, ' ', br.last_name) as customer_name,
+            br.email,
+            br.phone_number,
+            br.check_in,
+            br.check_out,
+            br.total_price,
+            br.status
+        from boo_travel.booking_room br
+        join boo_travel.booking_room_detail brd on br.id = brd.booking_room_id
+        join boo_travel.rooms r on r.id = brd.room_id
+        join boo_travel.employee_of eo on eo.hotel_id = r.hotel_id
+        join boo_travel.users u on u.id = eo.user_id and u.role_id = 5
+        where
+            eo.user_id = ?
+            #EXTENDS_CONDITION#
+        group by br.id
+            #EXTENDS_PAGING#
+    </query>
+
+    <query id="SELECT_BOOKING_DETAIL_BY_ID">
+        select
+            br.id,
+            concat(br.first_name, ' ', br.last_name) as customer_name,
+            br.email,
+            br.phone_number,
+            br.check_in,
+            br.check_out,
+            brd.price,
+            br.total_price,
+            br.note,
+            br.time_booking,
+            p.promotion_code,
+            r.room_name,
+            r.room_code,
+            brd.number_room_booking,
+            brd.room_id
+        from boo_travel.booking_room br
+        left join boo_travel.booking_room_detail brd on br.id = brd.booking_room_id
+        left join boo_travel.promotions p on p.id = br.promotion_id
+        left join boo_travel.rooms r on r.id = brd.room_id
+        left join boo_travel.employee_of eo on eo.hotel_id = r.hotel_id
+        left join boo_travel.users u on u.id = eo.user_id and u.role_id = 5
+        where
+            eo.user_id = ?
+            and br.id = ?
+    </query>
+
+    <query id="CREATE_BOOKING_ROOM_DETAIL">
+        <![CDATA[
+        INSERT
+            INTO
+            BOO_TRAVEL.BOOKING_ROOM_DETAIL
+                (ID,
+                BOOKING_ROOM_ID,
+                ROOM_ID,
+                NUMBER_ROOM_BOOKING,
+                PRICE,
+                NUMBER_GUEST,
+                FROM_DATE,
+                TO_DATE,
+                NUMBER_OF_ADULTS_ARISING,
+                NUMBER_OF_CHILD_ARISING)
+                SELECT
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    CASE
+                       WHEN ? = TRUE THEN R.WEEK_PRICE
+		               WHEN ? = TRUE THEN R.MONTH_PRICE
+                    END AS PRICE,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?
+                FROM
+                    BOO_TRAVEL.ROOMS R
+                WHERE
+                    R.ID = ?
+        ]]>
+    </query>
+
+    <query id="COUNT_TOTAL_BOOKING_SYSTEM">
+        SELECT COUNT(*) FROM BOO_TRAVEL.BOOKING_ROOM
+        where status != 0 and status != 4
+    </query>
+
+    <query id="COUNT_TOTAL_BOOKING_BY_WEEKLY_SYSTEM">
+        SELECT
+            DATE_TRUNC('day', time_booking) as day,
+            count(DATE_TRUNC('day', time_booking)) as total
+        FROM
+            boo_travel.booking_room
+        WHERE
+            status != 0 and status != 4 and
+            time_booking BETWEEN ? AND ?
+        group by
+            DATE_TRUNC('day', time_booking)
+    </query>
+
+    <query id="COUNT_TOTAL_BOOKING_BUSINESS_ADMIN">
+        with temptable as (
+            select room_id, brd.booking_room_id from boo_travel.booking_room br
+            join boo_travel.booking_room_detail brd on br.id = booking_room_id
+            group by brd.room_id, brd.booking_room_id
+        ),
+        booking as (
+            select room_id, count(room_id) from temptable brd
+            where booking_room_id in (
+                select id from boo_travel.booking_room
+                where status != 0 and status != 4
+            )
+            group by room_id
+        )
+
+        select sum(count) from booking bk where bk.room_id in (
+            select id from boo_travel.rooms r where r.hotel_id in (
+                select hotel_id from boo_travel.employee_of eo where manager_id = ?
+            )
+        )
+    </query>
+
+    <query id="COUNT_TOTAL_BOOKING_BY_WEEKLY_BUSINESS_ADMIN">
+        with booking as (
+            select  time_booking, room_id, br.id from
+                boo_travel.booking_room br join boo_travel.booking_room_detail brd
+                on br.id = booking_room_id
+            where
+                br.status != 0 and br.status != 4 and
+                time_booking between ? and ?
+            group by br.id, room_id, time_booking
+        )
+
+        select
+            date_trunc('day', bk.time_booking) as day,
+            count(date_trunc('day', bk.time_booking)) as total
+        from booking bk where bk.room_id in (
+            select r.id  from boo_travel.rooms r where r.hotel_id in (
+                select hotel_id from boo_travel.employee_of eo where manager_id = ?
+            )
+        )
+        group by
+        date_trunc('day', bk.time_booking)
+    </query>
+
+    <query id="COUNT_TOTAL_BOOKING_BUSINESS_OWNER">
+        with temptable as (
+            select room_id, brd.booking_room_id from boo_travel.booking_room br
+            join boo_travel.booking_room_detail brd on br.id = booking_room_id
+            where br.status != 0 and br.status != 4
+            group by brd.room_id, brd.booking_room_id
+        ),
+        booking as (
+            select room_id, count(room_id)  from temptable brd
+            where booking_room_id in (
+                select id from boo_travel.booking_room
+            )
+            group by room_id
+        )
+
+        select sum(count) from booking bk where bk.room_id in (
+            select id from boo_travel.rooms r where r.hotel_id in (
+                select hotel_id from boo_travel.employee_of eo
+                    join boo_travel.users u on eo.user_id = u.id and u.role_id = 4
+                where eo.user_id = ?
+            )
+        )
+    </query>
+
+    <query id="COUNT_TOTAL_BOOKING_BY_WEEKLY_BUSINESS_OWNER">
+        with booking as (
+            select  time_booking, room_id, br.id from
+                boo_travel.booking_room br join boo_travel.booking_room_detail brd
+            on br.id = booking_room_id
+            where
+                br.status != 0 and br.status != 4 and
+                time_booking between ? and ?
+            group by br.id, room_id, time_booking
+        )
+
+        select
+            date_trunc('day', bk.time_booking) as day,
+            count(date_trunc('day', bk.time_booking)) as total
+        from booking bk where bk.room_id in (
+            select r.id  from boo_travel.rooms r where r.hotel_id in (
+                select hotel_id from boo_travel.employee_of eo
+                join boo_travel.users u on u.id = eo.user_id and u.role_id = 4
+                where eo.user_id = ?
+            )
+        )
+        group by
+            date_trunc('day', bk.time_booking)
+    </query>
+
+    <query id="SELECT_BOOKING_DETAIL_BY_BOOKING_ID">
+        select
+            from_date,
+            to_date,
+            price,
+            number_guest,
+            number_room_booking,
+            number_of_adults_arising,
+            number_of_child_arising
+        from boo_travel.booking_room_detail brd where booking_room_id = ?
+    </query>
+
+    <query id="SELECT_ROOM_IMAGE_BY_ROOM_ID">
+        select
+            image_url
+        from boo_travel.room_image ri where ri.room_id = ?
+    </query>
+
+    <query id="SELECT_HISTORY_BOOKING">
+        SELECT
+            br.id,
+            r.hotel_id,
+            h.hotel_name,
+            r.room_name,
+            CONCAT(a.address1, ' ', a.address2, ', ', w.ward_name, ', ', d.district_name, ', ', p.province_name) AS address,
+            br.check_in,
+            br.check_out,
+            br.total_price,
+            brd.number_room_booking,
+            br.status,
+            MAX(hi.image_url) AS image_url
+        FROM
+            boo_travel.booking_room br
+            JOIN boo_travel.booking_room_detail brd ON br.id = brd.booking_room_id
+            JOIN boo_travel.rooms r ON r.id = brd.room_id
+            JOIN boo_travel.hotels h ON h.id = r.hotel_id
+            JOIN boo_travel.hotel_image hi ON h.id = hi.hotel_id
+            JOIN boo_travel.addresses a ON a.id = h.address_id
+            JOIN boo_travel.wards w ON w.id = a.ward_id
+            JOIN boo_travel.districts d ON d.id = w.district_id
+            JOIN boo_travel.provinces p ON p.id = d.province_id
+        WHERE
+        user_id = ?
+        #EXTEND_CONDITION#
+        GROUP BY
+            br.id,
+            r.hotel_id,
+            h.hotel_name,
+            r.room_name,
+            a.address1, a.address2, w.ward_name, d.district_name, p.province_name,
+            br.check_in,
+            br.check_out,
+            br.total_price,
+            brd.number_room_booking,
+            br.status;
+    </query>
+    <query id="GET_ALL_BOOKING_ROOM">
+        SELECT
+            id,
+            user_id,
+            email,
+            phone_number,
+            check_in,
+            check_out,
+            total_price,
+            note, status,
+            time_booking,
+            promotion_id,
+            last_modify_by,
+            last_modify_date,
+            last_name,
+            first_name
+        FROM
+         boo_travel.booking_room;
+    </query>
+    <query id="SELECT_BOOKING_DETAIL_QR_BY_ID">
+        select
+        br.id,
+        br.status
+        from boo_travel.booking_room br
+        left join boo_travel.booking_room_detail brd on br.id = brd.booking_room_id
+        left join boo_travel.rooms r on r.id = brd.room_id
+        left join boo_travel.employee_of eo on eo.hotel_id = r.hotel_id
+        left join boo_travel.users u on u.id = eo.user_id and u.role_id = 5
+        where
+        eo.user_id = ?
+        and br.id = ?
+
+    </query>
+</sql>

@@ -1,0 +1,771 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sql>
+    <query id="SEQ_ROOM_ID">
+        SELECT NEXTVAL('BOO_TRAVEL.ROOMS_ID_SEQ') AS ROOM_ID
+    </query>
+
+    <query id = "INSERT_ROOM">
+        INSERT
+            INTO
+            BOO_TRAVEL.ROOMS
+            (ID,
+            ROOM_NAME,
+            ROOM_COUNT,
+            ROOM_SIZE,
+            ROOM_TYPE_ID,
+            MIN_PRICE,
+            DEFAULT_PRICE,
+            WEEK_PRICE,
+            MONTH_PRICE,
+            ADDITIONAL_ADULT_FEE,
+            ADDITIONAL_CHILD_FEE,
+            MAX_PEOPLE_STAY,
+            STATUS,
+            HOTEL_ID,
+            PRICE_INCLUDES_BREAKFAST,
+            CONFIRMATION_WITHIN_30_MINUTES,
+            SURCHARGE_FOR_ADULTS_CHILDREN,
+            CONFIRM_NOW,
+            ROOM_CODE,
+            STANDARD_NUMBER_OF_PEOPLE
+            )
+        SELECT
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                TRUE,
+                EO.HOTEL_ID,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?
+        FROM
+        BOO_TRAVEL.EMPLOYEE_OF EO
+        WHERE
+            USER_ID = ?
+            AND STATUS = TRUE
+    </query>
+
+    <query id = "INSERT_BED_IN_ROOM">
+        INSERT
+            INTO
+            BOO_TRAVEL.BED_IN_ROOM
+            (ROOM_ID,
+            BED_TYPE_ID,
+            COUNT_BED)
+        VALUES(?,
+                ?,
+                ?);
+    </query>
+
+    <query id = "INSERT_ROOM_SERVICE">
+        INSERT
+            INTO
+            BOO_TRAVEL.ROOM_SERVICE_DETAIL
+                (ROOM_ID,
+                ROOM_SERVICE_ID)
+            VALUES(
+                ?,
+                ?);
+    </query>
+
+    <query id = "SET_ROOM_PRICE_BY_DATE">
+        INSERT
+            INTO
+            BOO_TRAVEL.ROOM_PRICE_BY_DATE (
+                ROOM_ID,
+                DATE_APPLY,
+                PRICE)
+            VALUES(?,
+                    ?::DATE,
+                    ?)
+            ON CONFLICT (ROOM_ID,DATE_APPLY) DO
+            UPDATE SET
+                PRICE = EXCLUDED.PRICE;
+    </query>
+
+    <query id = "SET_NUM_ROOM_AVAILABLE_BY_DATE">
+        INSERT
+            INTO
+            BOO_TRAVEL.ROOM_AVAILABLE_BY_DATE (
+                ROOM_ID,
+                DATE_APPLY,
+                NUMBER_ROOM_AVAILABLE)
+            VALUES(?,
+                    ?::DATE,
+                    ?)
+        ON CONFLICT (ROOM_ID,DATE_APPLY) DO
+        UPDATE SET
+            NUMBER_ROOM_AVAILABLE = EXCLUDED.NUMBER_ROOM_AVAILABLE;
+    </query>
+
+    <query id="SEARCH_ROOM">
+        <![CDATA[
+        SELECT DISTINCT ON (RAD.room_id)
+            R.ID AS ID,
+            R.ROOM_NAME,
+            R.MAX_PEOPLE_STAY,
+            R.room_size,
+            R.min_price,
+            R.WEEK_PRICE,
+            R.WEEK_PRICE,
+            R.MONTH_PRICE,
+            R.ADDITIONAL_ADULT_FEE,
+            R.ADDITIONAL_CHILD_FEE,
+            R.default_price,
+            R.STATUS,
+            R.HOTEL_ID,
+            R.PRICE_INCLUDES_BREAKFAST,
+            R.confirmation_within_30_minutes,
+            R.surcharge_for_adults_children,
+            R.confirm_now,
+            R.room_type_id,
+            R.room_count,
+            R.confirm_now,
+            R.standard_number_of_people,
+            (
+                SELECT STRING_AGG(I.image_url, ', ')
+                FROM BOO_TRAVEL.ROOM_IMAGE I
+                WHERE I.room_id = R.ID
+            ) AS all_image_urls
+        FROM
+            BOO_TRAVEL.ROOMS R
+        JOIN
+            BOO_TRAVEL.HOTELS H ON R.HOTEL_ID = H.ID
+        JOIN
+            BOO_TRAVEL.ROOM_AVAILABLE_BY_DATE RAD ON R.ID = RAD.ROOM_ID
+        JOIN
+            BOO_TRAVEL.ADDRESSES A ON H.ADDRESS_ID = A.ID
+        JOIN
+            BOO_TRAVEL.WARDS W ON A.WARD_ID = W.ID
+        JOIN
+            BOO_TRAVEL.DISTRICTS D ON W.DISTRICT_ID = D.ID
+        JOIN
+            BOO_TRAVEL.PROVINCES P ON D.PROVINCE_ID = P.ID
+        WHERE
+           (R.MAX_PEOPLE_STAY IS NULL OR R.MAX_PEOPLE_STAY = ?)
+            OR (
+                RAD.room_id NOT IN (
+                    SELECT DISTINCT room_id
+                    FROM BOO_TRAVEL.ROOM_AVAILABLE_BY_DATE
+                    WHERE DATE_APPLY BETWEEN ? AND ?
+                      AND (NUMBER_ROOM_AVAILABLE IS NULL OR NUMBER_ROOM_AVAILABLE < ?)
+                )
+            )
+
+        ORDER BY RAD.room_id
+    ]]>
+    </query>
+
+    <query id="CHECK_MAX_ROOM_AVAILABLE">
+    <![CDATA[
+        SELECT
+                GENERATED_DATE.DATE_TIME,
+                CASE
+                	WHEN (R.ROOM_COUNT - COALESCE(SUM(BRD.NUMBER_ROOM_BOOKING),0)) < ? THEN TRUE
+                	ELSE FALSE
+                END AS CHECK
+            FROM
+                (
+                SELECT
+                    GENERATE_SERIES(?::DATE,
+                    ?::DATE,
+                    '1 DAY') AS DATE_TIME) AS GENERATED_DATE
+            LEFT JOIN BOO_TRAVEL.ROOM_AVAILABLE_BY_DATE RABD ON
+                    GENERATED_DATE.DATE_TIME = RABD.DATE_APPLY
+                AND RABD.ROOM_ID = ?
+            LEFT JOIN BOO_TRAVEL.ROOMS R ON
+                RABD.ROOM_ID = R.ID
+            LEFT JOIN BOO_TRAVEL.BOOKING_ROOM_DETAIL BRD ON
+                R.ID = BRD.ROOM_ID
+            AND (BRD.FROM_DATE = GENERATED_DATE.DATE_TIME
+                OR (BRD.FROM_DATE < GENERATED_DATE.DATE_TIME
+                	AND BRD.TO_DATE > GENERATED_DATE.DATE_TIME))
+            INNER JOIN BOO_TRAVEL.BOOKING_ROOM BR ON
+            	BRD.BOOKING_ROOM_ID = BR.ID
+            	AND BR.STATUS NOT IN (0,4,5)
+            GROUP BY
+                GENERATED_DATE.DATE_TIME,
+                R.ROOM_COUNT
+            ORDER BY
+                GENERATED_DATE.DATE_TIME ASC;
+    ]]>
+    </query>
+
+    <query id="SEARCH_ROOM_AVAILABLE_CALENDER">
+        <![CDATA[
+            SELECT
+                GENERATED_DATE.DATE_TIME,
+                RABD.NUMBER_ROOM_AVAILABLE,
+                SUM(BRD.NUMBER_ROOM_BOOKING) AS TOTAL_NUMBER_ROOM_BOOKING
+            FROM
+                (
+                SELECT
+                    GENERATE_SERIES(?::DATE,
+                    ?::DATE,
+                    '1 DAY') AS DATE_TIME) AS GENERATED_DATE
+            LEFT JOIN BOO_TRAVEL.ROOM_AVAILABLE_BY_DATE RABD ON
+                    GENERATED_DATE.DATE_TIME = RABD.DATE_APPLY
+                AND RABD.ROOM_ID = ?
+            LEFT JOIN BOO_TRAVEL.ROOMS R ON
+                RABD.ROOM_ID = R.ID
+            LEFT JOIN
+			(SELECT
+					*
+				FROM
+					BOO_TRAVEL.BOOKING_ROOM_DETAIL BRD
+				LEFT JOIN BOO_TRAVEL.BOOKING_ROOM BR ON
+					BRD.BOOKING_ROOM_ID = BR.ID
+				WHERE STATUS NOT IN (0,4,5))
+             BRD ON
+                R.ID = BRD.ROOM_ID
+                AND (BRD.FROM_DATE = GENERATED_DATE.DATE_TIME
+                OR (BRD.FROM_DATE < GENERATED_DATE.DATE_TIME
+                	AND BRD.TO_DATE > GENERATED_DATE.DATE_TIME)
+                )
+            GROUP BY
+                GENERATED_DATE.DATE_TIME,
+                RABD.NUMBER_ROOM_AVAILABLE
+            ORDER BY
+                DATE_TIME ASC
+        ]]>
+    </query>
+
+    <query id="SEARCH_ROOM_PRICE_CALENDER">
+        <![CDATA[
+           SELECT
+                RPBD.DATE_APPLY,
+                RPBD.PRICE
+            FROM
+                BOO_TRAVEL.ROOM_PRICE_BY_DATE RPBD
+            WHERE
+                RPBD.ROOM_ID = ?
+                AND RPBD.DATE_APPLY >= ?::DATE
+                AND RPBD.DATE_APPLY <= ?::DATE
+        ]]>
+    </query>
+
+    <query id="GET_PRICE_DEFAULT">
+        SELECT
+            DEFAULT_PRICE
+        FROM
+            BOO_TRAVEL.ROOMS
+        WHERE
+            ID = ?
+    </query>
+
+    <query id="SEARCH_ROOM_USER_MANAGEMENT">
+        SELECT
+            R.ID,
+            R.ROOM_NAME,
+            R.ROOM_CODE,
+            R.ROOM_TYPE_ID,
+            RT.ROOM_TYPE_NAME,
+            R.ROOM_COUNT,
+            R.ROOM_SIZE,
+            R.MAX_PEOPLE_STAY,
+            R.DEFAULT_PRICE,
+            R.DEFAULT_PRICE,
+            R.STATUS
+        FROM
+            BOO_TRAVEL.ROOMS R
+        INNER JOIN BOO_TRAVEL.ROOM_TYPE RT ON
+            R.ROOM_TYPE_ID = RT.ID
+        INNER JOIN BOO_TRAVEL.EMPLOYEE_OF EO ON
+            R.HOTEL_ID = EO.HOTEL_ID
+            AND EO.USER_ID = ?
+        INNER JOIN BOO_TRAVEL.USERS U ON
+            U.ID = EO.USER_ID
+            AND U.ROLE_ID = 4
+        WHERE
+            1 = 1
+            #EXTENDS_CONDITION#
+            #EXTENDS_PAGING#
+    </query>
+
+    <query id="COUNT_ROOM_OUTPUT">
+        SELECT
+            COUNT(*)
+        FROM
+            BOO_TRAVEL.ROOMS R
+        INNER JOIN BOO_TRAVEL.ROOM_TYPE RT ON
+            R.ROOM_TYPE_ID = RT.ID
+        INNER JOIN BOO_TRAVEL.EMPLOYEE_OF EO ON
+            R.HOTEL_ID = EO.HOTEL_ID
+            AND EO.USER_ID = ?
+        INNER JOIN BOO_TRAVEL.USERS U ON
+            U.ID = EO.USER_ID
+            AND U.ROLE_ID = 4
+        WHERE
+            1 = 1
+            #EXTENDS_CONDITION#
+    </query>
+
+
+    <query id = "GET_ROOM_BY_ID">
+        SELECT
+            R.*,
+            SERVICE.LIST_SERVICE
+        FROM
+            BOO_TRAVEL.ROOMS R
+        LEFT JOIN (SELECT SD.ROOM_ID,
+            STRING_AGG(S.ROOM_SERVICE_NAME,',') AS LIST_SERVICE
+        FROM
+            BOO_TRAVEL.ROOM_SERVICE_DETAIL SD
+        JOIN BOO_TRAVEL.ROOM_SERVICE S ON
+            SD.ROOM_SERVICE_ID = S.ID
+        GROUP BY SD.ROOM_ID ) AS SERVICE
+            ON R.ID = SERVICE.ROOM_ID
+        WHERE
+            ID = ?
+    </query>
+
+    <query id = "GET_ROOM_BY_HOTEL_ID">
+        SELECT *
+            FROM BOO_TRAVEL.ROOMS
+        WHERE
+            HOTEL_ID = ?
+    </query>
+
+
+    <query id = "GET_ROOM_BY_HOTEL_ID_GUEST">
+        <![CDATA[
+        WITH VALIDROOMS AS (
+        SELECT
+        DISTINCT R.ID AS ROOM_ID,
+        R.HOTEL_ID,
+        RPBD.PRICE,
+        ROW_NUMBER() OVER(PARTITION BY R.HOTEL_ID ORDER BY COALESCE(RPBD.PRICE,R.DEFAULT_PRICE)) AS ROW_NUM
+        FROM BOO_TRAVEL.ROOMS R INNER JOIN
+        ( SELECT
+        COUNT(RABD.ROOM_ID) AS COUNT_ROOM,
+        ROOM_ID
+        FROM
+        BOO_TRAVEL.ROOM_AVAILABLE_BY_DATE RABD
+        WHERE
+        DATE_APPLY >= ?::DATE
+        AND DATE_APPLY < ?::DATE
+        AND COALESCE (NUMBER_ROOM_AVAILABLE,0) >= ?
+        GROUP BY
+        RABD.ROOM_ID) AS CHECK_ROOM_AVAILABLE ON
+        CHECK_ROOM_AVAILABLE.ROOM_ID = R.ID
+        AND CHECK_ROOM_AVAILABLE.COUNT_ROOM =  (CAST(? AS DATE) - CAST(? AS DATE))
+        LEFT JOIN BOO_TRAVEL.ROOM_PRICE_BY_DATE RPBD ON
+        R.ID = RPBD.ROOM_ID
+        AND RPBD.DATE_APPLY = ?::DATE
+        WHERE R.MAX_PEOPLE_STAY > ?
+        )
+        SELECT *
+            FROM BOO_TRAVEL.ROOMS R
+        WHERE
+            ID in (select ROOM_ID from VALIDROOMS)
+        and R.hotel_ID = ?
+
+        ]]>
+    </query>
+
+    <query id = "GET_SERVICE_ROOM">
+        SELECT DISTINCT ON (RS.ROOM_SERVICE_NAME)
+            RS.ROOM_SERVICE_NAME
+        FROM
+            BOO_TRAVEL.ROOM_SERVICE_DETAIL RSD
+        JOIN
+            BOO_TRAVEL.ROOM_SERVICE RS ON RSD.ROOM_SERVICE_ID = RS.ID
+        WHERE
+            RSD.ROOM_ID = ?
+    </query>
+
+    <query id = "GET_ROOM_TYPE_BY_ID">
+        SELECT *
+        FROM  BOO_TRAVEL.room_type
+        WHERE ID = ?
+    </query>
+
+           <!--room ROOM_PRICE_BY_DATE-->
+
+    <query id = "GET_PRICE_BY_DATE_AND_ROOM_ID">
+        SELECT
+            PRICE
+        FROM
+            BOO_TRAVEL.ROOM_PRICE_BY_DATE
+        WHERE
+            ROOM_ID = ? AND DATE_APPLY = ?
+    </query>
+
+    <query id = "GET_PRICE_BY_DATE_AND_ROOM_ID_VER_2">
+        SELECT
+            PRICE
+        FROM
+            BOO_TRAVEL.ROOM_PRICE_BY_DATE
+        WHERE
+            ROOM_ID = ? AND DATE_APPLY >= ?
+    </query>
+
+    <query id ="GET_BED_IN_ROOM">
+        SELECT
+            BIR.COUNT_BED,
+            BT.BED_TYPE_NAME,
+            BIR.BED_TYPE_ID
+        FROM
+            BOO_TRAVEL.BED_IN_ROOM BIR
+        JOIN
+            BOO_TRAVEL.BED_TYPE BT ON BIR.BED_TYPE_ID = BT.ID
+        WHERE
+            BIR.ROOM_ID = ?;
+    </query>
+
+    <query id ="GET_ROOM_IMAGE">
+        SELECT ri.image_url
+        FROM BOO_TRAVEL.ROOM_IMAGE ri
+        WHERE ri.room_id = ?
+    </query>
+
+    <!--room ROOM_AVAILABLE_BY_DATE-->
+    <query id="UPDATE_ROOM_AVAILABLE_BY_ROOM_ID">
+        UPDATE
+            BOO_TRAVEL.ROOM_AVAILABLE_BY_DATE
+        SET
+            NUMBER_ROOM_AVAILABLE = ?
+        WHERE
+            ROOM_ID = ?
+        AND
+            DATE_APPLY = ?
+    </query>
+
+    <query id = "GET_ROOM_AVAILABLE_BY_ROOM_ID">
+        SELECT
+            ID, NUMBER_ROOM_AVAILABLE , DATE_APPLY
+        FROM
+            BOO_TRAVEL.ROOM_AVAILABLE_BY_DATE
+        WHERE
+            ROOM_ID = ?
+        AND
+            DATE_APPLY BETWEEN ? AND ?;
+    </query>
+
+    <query id = "GET_ROOM_AVAILABLE_BY_ROOM_ID_AND_DATE_APPLY">
+        SELECT
+            ID, NUMBER_ROOM_AVAILABLE , DATE_APPLY
+        FROM
+            BOO_TRAVEL.ROOM_AVAILABLE_BY_DATE
+        WHERE
+            ROOM_ID = ?
+        AND
+            DATE_APPLY = ?;
+    </query>
+
+    <query id="GET_ROOM_BY_DATE_AVAILABLE">
+        <![CDATA[
+            SELECT
+                r.id,
+                r.room_name,
+                r.room_count,
+                r.room_size,
+                r.room_type_id,
+                r.min_price,
+                r.default_price,
+                r.week_price,
+                r.month_price,
+                r.additional_adult_fee,
+                r.additional_child_fee,
+                r.max_people_stay,
+                r.status,
+                r.hotel_id,
+                r.room_code,
+                r.price_includes_breakfast,
+                r.confirmation_within_30_minutes,
+                r.surcharge_for_adults_children,
+                r.confirm_now,
+                r.room_code
+            FROM
+                BOO_TRAVEL.rooms r
+            WHERE
+                r.id = ?
+                AND ? BETWEEN COALESCE((SELECT MIN(rad.date_apply) FROM BOO_TRAVEL.room_available_by_date rad WHERE rad.room_id = r.id AND rad.room_id = ?), ?)
+                                    AND COALESCE((SELECT MAX(rad.date_apply) FROM BOO_TRAVEL.room_available_by_date rad WHERE rad.room_id = r.id AND rad.room_id = ?), ?)
+                AND r.max_people_stay >= ?
+                AND EXISTS (
+                    SELECT 1
+                    FROM generate_series(?::date, ?::date, '1 day'::interval) AS dates
+                    LEFT JOIN BOO_TRAVEL.room_available_by_date rad ON rad.room_id = r.id AND rad.date_apply = dates
+                    WHERE COALESCE(rad.number_room_available, 0) >= ? AND rad.room_id = ?
+                )
+                AND (
+                    SELECT COUNT(DISTINCT rad.date_apply)
+                    FROM BOO_TRAVEL.room_available_by_date rad
+                    WHERE rad.room_id = r.id AND rad.room_id = ?
+                      AND rad.date_apply BETWEEN ? AND ?
+                ) = (SELECT COUNT(DISTINCT dates) FROM generate_series(?::date, ?::date, '1 day'::interval) AS dates)
+                OR (
+                    SELECT COUNT(DISTINCT rad.date_apply)
+                    FROM generate_series(?::date, ?::date, '1 day'::interval) AS dates
+                    LEFT JOIN BOO_TRAVEL.room_available_by_date rad ON rad.room_id = r.id AND rad.date_apply = dates
+                    WHERE COALESCE(rad.number_room_available, 0) >= ? AND rad.room_id = ?
+                ) = EXTRACT(day FROM ?::timestamp - ?::timestamp)::integer
+    ]]>
+    </query>
+
+    <query id ="UPDATE_ROOM">
+        UPDATE
+            BOO_TRAVEL.ROOMS
+        SET
+            ROOM_NAME = ?,
+            ROOM_COUNT = ?,
+            ROOM_SIZE = ?,
+            ROOM_TYPE_ID = ?,
+            MIN_PRICE = ?,
+            DEFAULT_PRICE = ?,
+            WEEK_PRICE = ?,
+            MONTH_PRICE = ?,
+            ADDITIONAL_ADULT_FEE = ?,
+            ADDITIONAL_CHILD_FEE = ?,
+            MAX_PEOPLE_STAY = ?,
+            ROOM_CODE = ?,
+            PRICE_INCLUDES_BREAKFAST = ?,
+            CONFIRMATION_WITHIN_30_MINUTES = ?,
+            SURCHARGE_FOR_ADULTS_CHILDREN = ?,
+            CONFIRM_NOW = ?,
+            STANDARD_NUMBER_OF_PEOPLE = ?
+        WHERE
+            ID = ?;
+    </query>
+
+    <query id="DELETE_ROOM_SERVICE">
+        DELETE
+            FROM
+                BOO_TRAVEL.ROOM_SERVICE_DETAIL
+            WHERE
+                ROOM_ID = ?
+    </query>
+
+    <query id="DELETE_BED_ROOM">
+        DELETE
+            FROM
+                BOO_TRAVEL.BED_IN_ROOM
+            WHERE
+                ROOM_ID = ?
+    </query>
+
+    <query id="CHECK_ROOM_CODE">
+        SELECT
+            R.ID
+        FROM
+            BOO_TRAVEL.ROOMS R
+        WHERE
+            HOTEL_ID = #CONDITION#
+    </query>
+
+    <query id="CONDITION_UPDATE_ROOM_CODE">
+        (
+        SELECT
+            HOTEL_ID
+        FROM
+            BOO_TRAVEL.ROOMS
+        WHERE
+            ID = ?)
+        AND ROOM_CODE = ?
+        AND ID != ?
+    </query>
+
+    <query id="CONDITION_CREATE_ROOM_CODE">
+        (SELECT
+            HOTEL_ID
+        FROM
+            BOO_TRAVEL.EMPLOYEE_OF EO
+        WHERE
+            USER_ID = ?
+            AND STATUS = TRUE)
+            AND ROOM_CODE = ?
+    </query>
+
+    <query id="GET_ROOM_DETAIL_BY_ID">
+        SELECT R.ID AS ID,
+            R.ROOM_NAME,
+            R.MAX_PEOPLE_STAY,
+            R.ROOM_SIZE,
+            R.MIN_PRICE,
+            R.WEEK_PRICE,
+            R.WEEK_PRICE,
+            R.MONTH_PRICE,
+            R.ADDITIONAL_ADULT_FEE,
+            R.ADDITIONAL_CHILD_FEE,
+            R.DEFAULT_PRICE,
+            R.STATUS,
+            R.HOTEL_ID,
+            R.PRICE_INCLUDES_BREAKFAST,
+            R.CONFIRMATION_WITHIN_30_MINUTES,
+            R.SURCHARGE_FOR_ADULTS_CHILDREN,
+            R.CONFIRM_NOW,
+            R.ROOM_TYPE_ID,
+            R.ROOM_COUNT,
+            R.CONFIRM_NOW,
+            R.STANDARD_NUMBER_OF_PEOPLE,
+            (
+            SELECT STRING_AGG(I.IMAGE_URL, ', ')
+            FROM BOO_TRAVEL.ROOM_IMAGE I
+            WHERE I.ROOM_ID = R.ID
+            ) AS ALL_IMAGE_URLS,
+            R.ROOM_CODE
+        FROM
+            BOO_TRAVEL.ROOMS R
+        WHERE
+            R.ID = ?
+    </query>
+
+    <query id="GET_ROOM_SERVICE_BY_ID">
+            SELECT
+                RS.ROOM_SERVICE_NAME,
+                RS.ROOM_SERVICE_TYPE_ID,
+                RSD.ROOM_ID,
+                RS.ID
+            FROM
+                BOO_TRAVEL.ROOM_SERVICE_DETAIL RSD
+            JOIN
+                BOO_TRAVEL.ROOM_SERVICE RS ON RSD.ROOM_SERVICE_ID = RS.ID
+            WHERE RSD.ROOM_ID =?
+    </query>
+
+    <query id="SEARCH_LIST_ROOM_PRICE_CALENDER">
+        <![CDATA[
+        SELECT
+            TO_CHAR(GENERATED_DATE.DATE_APPLY, 'YYYY-MM-DD') DATE_TIME,
+            CASE
+            	WHEN RPBD.PRICE IS NULL THEN R.DEFAULT_PRICE
+            	ELSE RPBD.PRICE
+            END AS PRICE,
+            R.ID,
+            R.WEEK_PRICE,
+            R.MONTH_PRICE
+        FROM
+            (
+            SELECT
+                GENERATE_SERIES(?::DATE,
+                ?::DATE,
+                '1 DAY') AS DATE_APPLY) AS GENERATED_DATE
+            LEFT JOIN BOO_TRAVEL.ROOMS R ON
+                1 = 1
+                AND R.ID IN (#CONDITION)
+            LEFT JOIN BOO_TRAVEL.ROOM_PRICE_BY_DATE RPBD ON
+	            GENERATED_DATE.DATE_APPLY = RPBD.DATE_APPLY
+                AND RPBD.ROOM_ID = R.ID
+                AND RPBD.DATE_APPLY >= ?
+                AND RPBD.DATE_APPLY < ?
+            WHERE
+                GENERATED_DATE.DATE_APPLY != ?
+            GROUP BY
+                DATE_TIME,
+                RPBD.PRICE,
+                R.ID ,
+                R.WEEK_PRICE,
+                R.MONTH_PRICE,
+                R.DEFAULT_PRICE
+            ORDER BY
+                R.ID ASC,
+                DATE_TIME ASC;
+                    ]]>
+    </query>
+
+    <query id="COUNT_ROOM_OUTPUT_BOOKING_STAFF">
+        SELECT
+        COUNT(*)
+        FROM
+        BOO_TRAVEL.ROOMS R
+        INNER JOIN BOO_TRAVEL.ROOM_TYPE RT ON
+        R.ROOM_TYPE_ID = RT.ID
+        INNER JOIN BOO_TRAVEL.EMPLOYEE_OF EO ON
+        R.HOTEL_ID = EO.HOTEL_ID
+        AND EO.USER_ID = ?
+        INNER JOIN BOO_TRAVEL.USERS U ON
+        U.ID = EO.USER_ID
+        AND U.ROLE_ID = 5
+        WHERE
+        1 = 1
+        #EXTENDS_CONDITION#
+    </query>
+
+    <query id="SEARCH_ROOM_USER_MANAGEMENT_BOOKING_STAFF">
+        SELECT
+        R.ID,
+        R.ROOM_NAME,
+        R.ROOM_CODE,
+        R.ROOM_TYPE_ID,
+        RT.ROOM_TYPE_NAME,
+        R.ROOM_COUNT,
+        R.ROOM_SIZE,
+        R.MAX_PEOPLE_STAY,
+        R.DEFAULT_PRICE,
+        R.DEFAULT_PRICE,
+        R.STATUS
+        FROM
+        BOO_TRAVEL.ROOMS R
+        INNER JOIN BOO_TRAVEL.ROOM_TYPE RT ON
+        R.ROOM_TYPE_ID = RT.ID
+        INNER JOIN BOO_TRAVEL.EMPLOYEE_OF EO ON
+        R.HOTEL_ID = EO.HOTEL_ID
+        AND EO.USER_ID = ?
+        INNER JOIN BOO_TRAVEL.USERS U ON
+        U.ID = EO.USER_ID
+        AND U.ROLE_ID = 5
+        WHERE
+        1 = 1
+        #EXTENDS_CONDITION#
+        #EXTENDS_PAGING#
+    </query>
+
+    <query id="SELECT_ROOM_MANAGEMENT">
+        SELECT
+            R.ID,
+            R.ROOM_NAME,
+            R.ROOM_CODE
+        FROM
+            BOO_TRAVEL.ROOMS R
+        INNER JOIN BOO_TRAVEL.ROOM_TYPE RT ON
+            R.ROOM_TYPE_ID = RT.ID
+        INNER JOIN BOO_TRAVEL.EMPLOYEE_OF EO ON
+            R.HOTEL_ID = EO.HOTEL_ID
+            AND EO.USER_ID = ?
+        INNER JOIN BOO_TRAVEL.USERS U ON
+            U.ID = EO.USER_ID
+            AND U.ROLE_ID = 5
+    </query>
+
+    <query id="INSERT_ROOM_IMAGE">
+        INSERT INTO BOO_TRAVEL.room_image
+        (image_url, room_id)
+        VALUES(?,?)
+    </query>
+
+    <query id="DELETE_ROOM_IMAGE">
+        DELETE
+            FROM
+                BOO_TRAVEL.ROOM_IMAGE
+            WHERE
+                ROOM_ID = ?
+    </query>
+
+    <query id="DELETE_IMAGE_ROOM_UPDATE">
+        DELETE FROM BOO_TRAVEL.ROOM_IMAGE WHERE ROOM_ID = ?
+        #EXTEND_CONDITION#
+    </query>
+
+    <query id="GET_LIST_IMAGE_ROOM_DELETE">
+        SELECT IMAGE_URL FROM BOO_TRAVEL.ROOM_IMAGE WHERE ROOM_ID = ?
+        #EXTEND_CONDITION#
+    </query>
+
+    <query id="GET_NUMBER_ROOM_AVAILABLE">
+        select number_room_available from boo_travel.room_available_by_date rabd
+        where room_id = ? and date_apply = ?
+    </query>
+</sql>

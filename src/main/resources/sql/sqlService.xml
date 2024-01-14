@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sql>
+    <query id="SELECT_LIST_SERVICE_HOTEL">
+        SELECT
+            ID,
+            HOTEL_SERVICE_NAME
+        FROM
+            BOO_TRAVEL.HOTEL_SERVICE
+    </query>
+
+    <query id="SELECT_LIST_SERVICE_ROOM_TYPE">
+        SELECT
+            ID,
+            ROOM_SERVICE_TYPE_NAME
+        FROM
+            BOO_TRAVEL.ROOM_SERVICE_TYPE
+    </query>
+
+    <query id="SELECT_LIST_SERVICE_ROOM_BY_TYPE_ID">
+        SELECT
+            ID,
+            ROOM_SERVICE_NAME
+        FROM
+            BOO_TRAVEL.ROOM_SERVICE
+        WHERE
+            ROOM_SERVICE_TYPE_ID = ?
+    </query>
+</sql>

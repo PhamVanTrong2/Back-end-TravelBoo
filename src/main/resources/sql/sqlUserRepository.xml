@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sql>
+
+    <query id="SELECT_ALL_USERS">
+        SELECT * FROM BOO_TRAVEL.USERS;
+    </query>
+
+    <query id="SELECT_USER_BY_ID">
+        SELECT * FROM BOO_TRAVEL.USERS WHERE ID = ?;
+    </query>
+
+    <query id="SELECT_USER_BY_ROLE_ID">
+        SELECT * FROM BOO_TRAVEL.USERS WHERE ROLE_ID = ?;
+    </query>
+
+    <query id="SELECT_USER_BY_NAME">
+        SELECT * FROM BOO_TRAVEL.USERS WHERE USER_NAME = ?;
+    </query>
+
+    <query id="INSERT_USER">
+        INSERT
+            INTO
+            BOO_TRAVEL.USERS (
+            USER_PASSWORD ,
+            USER_NAME,
+            EMAIL)
+        VALUES (
+            ?,
+            ?,
+            ?);
+    </query>
+
+    <query id="CHECK_INFO_ALREADY_EXIST">
+        SELECT
+            CASE
+            WHEN U.EMAIL = ? THEN 'EMAIL'
+            WHEN U.PHONE_NUMBER = ? THEN 'PHONE NUMBER'
+            WHEN U.USER_NAME = ? THEN 'USER NAME'
+            ELSE NULL
+            END AS INFO_EXIST
+        FROM
+            BOO_TRAVEL.USERS U
+        WHERE
+            U.EMAIL = ?
+            OR U.PHONE_NUMBER = ?
+            OR U.USER_NAME = ?
+    </query>
+
+
+    <query id="INSERT_REGISTERED_USER">
+        INSERT INTO BOO_TRAVEL.USERS (
+            USER_NAME,
+            EMAIL,
+            USER_PASSWORD,
+            FIRST_NAME,
+            LAST_NAME,
+            PHONE_NUMBER,
+            BIRTH_DATE,
+            GENDER,
+            ADDRESS_ID,
+            AVATAR,
+            STATUS,
+            ROLE_ID,
+            VERIFICATION_CODE
+        )
+        VALUES (
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?
+        );
+    </query>
+
+    <query id="UPDATE_REGISTERED_USER">
+        UPDATE BOO_TRAVEL.USERS
+        SET
+            USER_NAME = ?,
+            EMAIL = ?,
+            FIRST_NAME = ?,
+            LAST_NAME = ?,
+            PHONE_NUMBER = ?,
+            BIRTH_DATE = ?,
+            GENDER = ?,
+            ADDRESS_ID = ?,
+            AVATAR = ?,
+            STATUS = ?
+        WHERE ID = ?
+    </query>
+
+
+    <query id="UPDATE_STATUS_REGISTERED_USER">
+        UPDATE BOO_TRAVEL.USERS
+        SET STATUS = ?
+        WHERE ID = ?;
+    </query>
+
+    <query id="SELECT_ALL_REGISTERED_USER_PAGED">
+        SELECT *
+            FROM BOO_TRAVEL.USERS
+        WHERE
+            ROLE_ID = 7
+            AND EMAIL LIKE ?
+            AND USER_NAME LIKE ?
+        LIMIT ? OFFSET ?;
+    </query>
+
+    <query id="CHECK_REGISTERED_USER">
+        SELECT * FROM BOO_TRAVEL.USERS WHERE ID = ?
+    </query>
+
+    <query id="SELECT_DETAIL_REGISTERED_USER">
+        SELECT * FROM BOO_TRAVEL.USERS
+        WHERE
+        ROLE_ID = 7 AND ID = ?
+    </query>
+
+    <query id = "FIND_USER_VERIFICATION_CODE">
+        SELECT * FROM BOO_TRAVEL.USERS
+        WHERE VERIFICATION_CODE = ?
+    </query>
+    <query id = "UPDATE_STATUS_USER_AND_VERIFICATION_CODE">
+        UPDATE BOO_TRAVEL.USERS
+            SET VERIFICATION_CODE = ?,
+            STATUS = ?
+        WHERE
+            VERIFICATION_CODE = ?
+    </query>
+
+    <query id="UPDATE_USER_PASSWORD">
+        UPDATE BOO_TRAVEL.USERS
+            SET USER_PASSWORD = ?
+        WHERE
+            EMAIL = ?
+    </query>
+
+    <query id="SEARCH_BO_BY_MANAGER">
+        SELECT
+            U.ID,
+            TRIM(CONCAT(FIRST_NAME, ' ', LAST_NAME)) AS FULL_NAME
+        FROM
+            BOO_TRAVEL.USERS U
+        INNER JOIN BOO_TRAVEL.EMPLOYEE_OF EO ON
+            U.ID = EO.USER_ID
+            AND EO.MANAGER_ID = ?
+            AND EO.HOTEL_ID IS NULL
+        WHERE
+            U.STATUS = TRUE
+    </query>
+
+    <query id="CHANGE_PASSWORD">
+        UPDATE BOO_TRAVEL.USERS
+            SET USER_PASSWORD = ?
+        WHERE
+            ID = ?
+    </query>
+
+    <query id="CHECK_EXIST_EMAIL">
+        SELECT ID FROM BOO_TRAVEL.USERS
+        WHERE EMAIL = ?
+    </query>
+
+    <query id="UPDATE_PROFILE">
+        UPDATE BOO_TRAVEL.USERS
+        SET
+            FIRST_NAME = ?,
+            LAST_NAME = ?,
+            GENDER = ?,
+            BIRTH_DATE = ?,
+            PHONE_NUMBER = ?,
+            ADDRESS_ID = ?,
+            AVATAR = ?
+        WHERE
+            ID = ?
+    </query>
+
+    <query id="COUNT_TOTAL_USER_SYSTEM">
+        SELECT COUNT(*) FROM BOO_TRAVEL.USERS where status = true
+    </query>
+
+    <query id="COUNT_TOTAL_STAFF_BUSINESS_ADMIN">
+        select count(*) from boo_travel.employee_of eo where eo.status = true and (manager_id = ? or manager_id in (
+            select user_id from boo_travel.employee_of eo where manager_id = ?
+        ))
+    </query>
+</sql>
